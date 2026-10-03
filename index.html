@@ -23,16 +23,47 @@
 
     <!-- Welcome -->
     <section id="screen-welcome" class="screen grad" hidden>
-      <div class="welcome">
-        <div class="hero-cards" aria-hidden="true">
-          <div class="mini c1"><span>🎳</span><b>Glow bowling</b></div>
-          <div class="mini c2"><span>🌄</span><b>Sunrise hike</b></div>
-          <div class="mini c3"><span>🍣</span><b>Sushi night</b></div>
+      <button class="intro-skip" data-act="intro-skip">Skip</button>
+      <div class="slides" id="slides">
+        <div class="slide">
+          <div class="hero-cards" aria-hidden="true">
+            <div class="mini c1"><span>🎳</span><b>Glow bowling</b><i class="mstamp no">NOPE</i></div>
+            <div class="mini c2"><span>🌄</span><b>Sunrise hike</b><i class="mstamp yes">SAVE</i></div>
+            <div class="mini c3"><span>🧋</span><b>Boba crawl</b></div>
+          </div>
+          <h1 class="logo big"><svg class="heart" viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.3 3 4.5 6.7 4.5c2.1 0 3.6 1.1 5.3 3 1.7-1.9 3.2-3 5.3-3 3.7 0 5.8 3.8 4.3 7.2C19.5 16.4 12 21 12 21z"/></svg>date me</h1>
+          <p class="tagline">Swipe on date ideas,<br>not people.</p>
+          <div class="hint-row"><span>👈 skip</span><span>save 👉</span></div>
         </div>
-        <h1 class="logo big"><svg class="heart" viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.3 3 4.5 6.7 4.5c2.1 0 3.6 1.1 5.3 3 1.7-1.9 3.2-3 5.3-3 3.7 0 5.8 3.8 4.3 7.2C19.5 16.4 12 21 12 21z"/></svg>date me</h1>
-        <p class="tagline">Swipe right on date ideas,<br>not people.</p>
-        <button class="btn-white" data-act="start-quiz">Let's go</button>
-        <p class="fine">A few quick questions about you, then about who you're dating (or send them the quiz). Saved only on this phone.</p>
+        <div class="slide">
+          <div class="duo" aria-hidden="true">
+            <div class="duo-av you">You</div><div class="duo-heart">💞</div><div class="duo-av them">Them</div>
+          </div>
+          <h2 class="slide-title">Made for you two</h2>
+          <p class="tagline small">Answer a few questions about you. Then about them, or send them the quiz.</p>
+          <div class="chip-row" aria-hidden="true"><span>🌲 you both love outdoors</span><span>💸 fits your budget</span><span>📍 near you</span></div>
+        </div>
+        <div class="slide">
+          <div class="mini-reel" aria-hidden="true">
+            <div class="mini-reel-track"><div>🎳 Glow bowling</div><div>🧋 Boba crawl</div><div>🌅 Swings &amp; sunset</div><div>🎮 Big arcade night</div><div>🛹 Skatepark</div><div>🎳 Glow bowling</div><div>🧋 Boba crawl</div></div>
+            <div class="mini-reel-win"></div>
+          </div>
+          <h2 class="slide-title">Can't decide? Spin 🎲</h2>
+          <p class="tagline small">Save a few you like. Date Me picks one.</p>
+        </div>
+        <div class="slide">
+          <div class="chat" aria-hidden="true">
+            <div class="bubble out">🛹 Date idea: Skatepark + slushies<br><b>Want to? 💘</b></div>
+            <div class="bubble in">YES 😍 saturday?</div>
+          </div>
+          <h2 class="slide-title">Send it to them</h2>
+          <p class="tagline small">One tap texts the idea to your date. Then go do it.</p>
+        </div>
+      </div>
+      <div class="intro-foot">
+        <div class="dots" id="dots"><i class="on"></i><i></i><i></i><i></i></div>
+        <button class="btn-white" id="intro-next" data-act="intro-next">Next</button>
+        <p class="fine">Takes about 2 minutes to set up. Saved only on this phone.</p>
       </div>
     </section>
 
@@ -183,6 +214,7 @@
         <div id="people-list" class="people-list"></div>
         <button class="btn-outline" data-act="new-person">＋ Plan for someone new</button>
         <button class="btn-outline" data-act="paste-answers">📥 Paste their answers</button>
+        <button class="btn-outline" data-act="how-it-works">❓ How Date Me works</button>
         <button class="btn-outline" data-act="open-share">💌 Share Date Me with a friend</button>
         <button class="btn-outline" data-act="check-update">🔄 Check for updates</button>
         <p class="fine dark ver-line" id="ver-people"></p>
@@ -291,6 +323,7 @@
       <div class="idea-box" id="idea-box"></div>
     </div>
 
+    <div id="coach" class="coach" role="status" hidden><span id="coach-text"></span><button data-act="coach-ok" aria-label="Got it">✕</button></div>
     <div id="confetti" aria-hidden="true"></div>
     <div id="toast" role="status"></div>
   </div>

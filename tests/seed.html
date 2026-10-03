@@ -1,6 +1,6 @@
 <!doctype html>
 <!-- Test fixture: loads a sample profile, then shows the app at phone size.
-     ?view=deck | saved | spin | filters | people | idea | interests | ai | aicard | who | invite | share | ribbon | age | welcome
+     ?view=deck | saved | spin | filters | people | idea | interests | ai | aicard | who | invite | share | ribbon | age | slide1..slide4 | hint | coach | welcome
      Overwrites this browser's Date Me data, so only use it on a test browser. -->
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>html,body{margin:0}iframe{border:0;position:fixed;left:0;top:0;width:375px;height:812px}</style></head>
 <body>
@@ -27,11 +27,12 @@
   };
   const me = { name: "Matt", birthdate: "2005-02-10", outdoorsy: 9, outAbout: 5, adventure: 8, active: 5, crowds: 5, budget: 1, foodie: 5, dislikes: ["sushi"], interests: ["outdoorsy", "animals"], love: "time" };
   // Views screenshotted with --virtual-time-budget must not wait on map servers: pretend every lookup is done.
-  if (view === "share" || view === "ribbon" || view === "age") {
+  Object.keys(localStorage).filter((k) => k.startsWith("dateme:hint")).forEach((k) => localStorage.removeItem(k));
+  if (view === "share" || view === "ribbon" || view === "age" || view === "hint" || view === "coach") {
     profile.place.spots = {}; profile.place.spotsAt = {};
     ["bowling","trailhead","lake","park","viewpoint","waterfall","hotspring","reserve","cafe","farm","shelter","icerink","musicvenue","theatre","museum","zoo","aquarium","mexican","sushi","ramen","market","peak","river","beach","ski"].forEach((k) => { profile.place.spots[k] = []; profile.place.spotsAt[k] = Date.now(); });
   }
-  if (view === "welcome" || view === "invite") localStorage.removeItem("dateme:v1");
+  if (view === "welcome" || view === "invite" || view.startsWith("slide")) localStorage.removeItem("dateme:v1");
   else if (view === "who") localStorage.setItem("dateme:v1", JSON.stringify({ version: 1, me: { answers: me }, activeId: null, profiles: {} }));
   else localStorage.setItem("dateme:v1", JSON.stringify({ version: 1, me: { answers: me }, activeId: "test1", profiles: { test1: profile } }));
 </script>
@@ -47,6 +48,8 @@
     if (view === "idea") { click('.tabbar [data-tab="saved"]'); setTimeout(() => click(".s-item"), 100); }
     if (view === "interests") { click('[data-act="tab"][data-tab="people"]'); click('[data-act="edit"]'); for (let k = 0; k < 8; k++) click("#quiz-next"); }
     if (view === "share") click('[data-act="open-share"]');
+    if (view.startsWith("slide")) { const el = d.getElementById("slides"); el.scrollTo({ left: (+view.slice(5) - 1) * el.clientWidth, behavior: "instant" }); el.dispatchEvent(new Event("scroll")); }
+    if (view === "coach") click('[data-act="like"]');
     if (view === "age") { click('.tabbar [data-tab="people"]'); click('[data-act="edit-me"]'); click("#quiz-next"); d.querySelector('.age-step[data-step="1"]').click(); }
     if (view === "ribbon") d.getElementById("update-ribbon").hidden = false;
     if (view === "ai") { click('[data-act="open-ai"]'); d.querySelectorAll("#ai-chips .chip")[0].click(); d.querySelectorAll("#ai-chips .chip")[4].click(); }

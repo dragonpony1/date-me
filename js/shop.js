@@ -94,11 +94,25 @@
     "monster-truck-show": "monster truck show", "big-concert": "concert venue", "piano-bar-sing-along": "piano bar",
     "jazz-club": "jazz club", "boardwalk-arcade": "boardwalk", "author-reading-or-signing": "bookstore events", "butterfly-house": "butterfly house",
     "owl-prowl-night-walk": "nature center", "dog-friendly-patio-brunch": "dog friendly patio brunch", "pet-adoption-event-visit": "pet adoption",
-    "food-truck-crawl-showdown": "food trucks", "auto-museum": "car museum", "dirt-track-or-drag-race-night": "race track",
+    "auto-museum": "car museum", "dirt-track-or-drag-race-night": "race track",
+    // 16-25 ideas
+    "boba-crawl": "boba", "drive-thru-taste-test": "drive thru", "hot-light-donut-run": "donut shop", "5-gas-station-snack-board": "gas station",
+    "secret-menu-drink-swap": "soda shop", "takeout-picnic-somewhere-better": "park", "target-run-challenge": "Target",
+    "dollar-store-gift-battle": "dollar store", "ikea-future-apartment-date": "IKEA", "thrift-flip-contest": "thrift store",
+    "photo-booth-strip": "photo booth", "build-a-bear-for-each-other": "Build-A-Bear Workshop", "claw-machine-challenge": "arcade",
+    "study-date-with-a-reward": "library", "campus-wander": "college campus", "parking-garage-sunset": "parking garage",
+    "skatepark-or-rollerblading": "skatepark", "sand-volleyball": "sand volleyball court", "ultimate-frisbee-in-the-park": "park",
+    "waterpark-day": "water park", "topgolf": "Topgolf", "big-arcade-night": "arcade", "manga-store-ramen": "comic book store",
+    "comic-con-or-cosplay-day": "comic con", "cheap-movie-night-at-the-theater": "discount movie theater",
+    "friday-night-game-food-after": "high school football game", "free-museum-day": "museum", "game-store-open-play-night": "board game store",
+    "rec-center-workout-date": "recreation center", "swings-sunset": "park with swings", "park-playground-takeover": "playground",
+    "late-night-grocery-dare": "grocery store", "random-bus-ride": "bus station",
   };
   // Outings with no single place to go.
   const NO_MAP = new Set(["yes-day", "random-acts-of-kindness", "random-direction-drive", "scenic-drive-with-a-playlist", "day-trip-to-a-nearby-town",
-    "gas-station-snack-road-trip", "audiobook-drive", "matching-outfits-day", "photo-walk", "geocaching-treasure-hunt", "ar-game-walk"]);
+    "gas-station-snack-road-trip", "audiobook-drive", "matching-outfits-day", "photo-walk", "geocaching-treasure-hunt", "ar-game-walk",
+    "disposable-camera-scavenger-hunt", "slushie-bike-ride", "blend-playlist-walk", "make-each-other-a-scavenger-hunt",
+    "driving-practice-date", "car-karaoke", "photo-dump-day", "paint-hide-kindness-rocks"]);
 
   // { label, url } to find this kind of place near them, or null for at-home / anywhere ideas.
   function nearby(idea, place) {
@@ -139,5 +153,5 @@
     return out;
   }
 
-  DM.Shop = { AFFILIATE, KIT, BOOK, TICKETS, linksFor, nearby };
+  DM.Shop = { AFFILIATE, KIT, BOOK, TICKETS, MAP_Q, NO_MAP, linksFor, nearby };
 })();

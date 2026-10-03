@@ -728,6 +728,7 @@
     });
     if (!show3.length) deckEl.insertAdjacentHTML("beforeend", emptyHTML());
     prefetchSpots();
+    swipeHint();
     $("[data-act=undo]").disabled = !S.history.length;
     $("[data-act=nope]").disabled = !show3.length;
     $("[data-act=like]").disabled = !show3.length;
@@ -796,12 +797,12 @@
     if (dir > 0) {
       Store.saveIdea(p.id, { ...entry.idea, spot: Spots.kindFor(entry.idea) });
       updateSavedCount();
-      if (p.saved.length === 1) toast("Saved! Find it in the ♥ tab");
     } else {
       Store.skipIdea(p.id, entry.idea.id);
     }
     renderDeck();
     renderStatus();
+    hintsAfterSwipe(dir);
   }
 
   function undo() {
@@ -838,6 +839,7 @@
     if (f.dist < 3) bits.push(DIST_LABEL[f.dist]);
     pills.push(`<button class="pill" data-act="open-filters">⚙️ ${bits.join(" · ")}</button>`);
     pills.push(`<span class="pill">${S.deck.length} left</span>`);
+    pills.push(`<button class="pill" data-act="how-it-works">❓ How it works</button>`);
     $("#status-row").innerHTML = pills.join("");
     $("#filter-dot").hidden = sameFilters(p.filters, Store.defaultFilters(p.answers));
   }
@@ -1296,10 +1298,113 @@
   setTimeout(() => checkUpdate(false), 4000);
 
   // ======================================================================
+  //  RAILS — first-open intro slides + one-time hints that walk you through
+  // ======================================================================
+  function showIntro(replay) {
+    S.introReplay = !!replay;
+    show("welcome");
+    const el = $("#slides");
+    el.scrollLeft = 0;
+    introAt(0);
+  }
+
+  function introIndex() { const el = $("#slides"); return Math.round(el.scrollLeft / Math.max(1, el.clientWidth)); }
+
+  function introAt(i) {
+    const n = $$("#slides .slide").length;
+    $$("#dots i").forEach((d, k) => d.classList.toggle("on", k === i));
+    const last = i >= n - 1;
+    $("#intro-next").textContent = last ? (S.introReplay ? "Got it" : "Let's go") : "Next";
+    $(".intro-skip").style.visibility = last ? "hidden" : "visible";
+  }
+
+  function introNext() {
+    const el = $("#slides");
+    const i = introIndex(), n = $$("#slides .slide").length;
+    if (i < n - 1) el.scrollTo({ left: (i + 1) * el.clientWidth, behavior: "smooth" });
+    else finishIntro();
+  }
+
+  function finishIntro() {
+    if (S.introReplay && Store.active()) showMain("discover");
+    else if (Store.me()) showWho();
+    else startQuiz({ mode: "me" });
+  }
+
+  $("#slides").addEventListener("scroll", () => introAt(introIndex()), { passive: true });
+
+  // One-time hints. Each shows once, then never again (until "How it works" resets them).
+  const HINTS = ["swipe", "saved", "send", "spin", "ai"];
+  const seen = (id) => { try { return localStorage.getItem("dateme:hint:" + id) === "1"; } catch (e) { return true; } };
+  const markSeen = (id) => { try { localStorage.setItem("dateme:hint:" + id, "1"); } catch (e) { /* fine */ } };
+  let coachId = null, coachTimer = null;
+
+  // A speech bubble pointing at an element. place: "above" | "below"
+  function coach(id, target, text, place = "above") {
+    if (seen(id) || !target || coachId) return;
+    const app = $("#app").getBoundingClientRect(), r = target.getBoundingClientRect();
+    if (!r.width) return;
+    const box = $("#coach");
+    $("#coach-text").textContent = text;
+    box.className = `coach ${place}`;
+    box.hidden = false;
+    const w = box.offsetWidth, h = box.offsetHeight;
+    const cx = r.left + r.width / 2 - app.left;
+    const left = Math.max(10, Math.min(app.width - w - 10, cx - w / 2));
+    box.style.left = left + "px";
+    box.style.top = (place === "above" ? r.top - app.top - h - 12 : r.bottom - app.top + 12) + "px";
+    box.style.setProperty("--arrow", Math.max(18, Math.min(w - 18, cx - left)) + "px");
+    target.classList.add("coach-pulse");
+    coachId = id;
+    clearTimeout(coachTimer);
+    coachTimer = setTimeout(() => endCoach(id), 7000);
+  }
+
+  function endCoach(id) {
+    if (id && coachId !== id) { if (id) markSeen(id); return; }
+    if (coachId) markSeen(coachId);
+    coachId = null;
+    clearTimeout(coachTimer);
+    $("#coach").hidden = true;
+    $$(".coach-pulse").forEach((x) => x.classList.remove("coach-pulse"));
+  }
+
+  // The swipe hint: an animated hand over the first card.
+  function swipeHint() {
+    const deck = $("#deck");
+    const has = deck.querySelector(".swipe-hint");
+    if (seen("swipe") || !S.deck.length || $("#screen-main").hidden || S.tab !== "discover") { if (has) has.remove(); return; }
+    if (!has) deck.insertAdjacentHTML("beforeend", `<div class="swipe-hint" aria-hidden="true"><div class="hand">👆</div><div class="swipe-label"><span>✕ skip</span><span>save ♥</span></div></div>`);
+  }
+
+  function hintsAfterSwipe(dir) {
+    if (!seen("swipe")) { markSeen("swipe"); const h = $("#deck .swipe-hint"); if (h) h.remove(); }
+    const p = Store.active();
+    S.swipes = (S.swipes || 0) + 1;
+    setTimeout(() => {
+      if (dir > 0 && p.saved.length >= 1 && !seen("saved")) coach("saved", $('.tabbar [data-tab="saved"]'), "Saved! Your picks live here ♥", "above");
+      else if (p.saved.length >= 3 && !seen("spin")) coach("spin", $('#deck-actions [data-act="open-spin"]'), "Can't decide? Spin 🎲", "above");
+      else if (S.swipes >= 8 && !seen("ai")) coach("ai", $("#status-row .pill.ai"), "✨ Want ideas made just for you two?", "below");
+    }, 450);
+  }
+
+  function hintsOnSaved() {
+    const p = Store.active();
+    if (p && p.saved.length && !seen("send")) setTimeout(() => coach("send", $("#saved-list .s-item"), "Tap one to send it to them 💌", "below"), 250);
+  }
+
+  function howItWorks() {
+    HINTS.forEach((id) => { try { localStorage.removeItem("dateme:hint:" + id); } catch (e) { /* fine */ } });
+    S.swipes = 0;
+    showIntro(true);
+  }
+
+  // ======================================================================
   //  SHELL
   // ======================================================================
   function show(name) {
     ["welcome", "quiz", "location", "main", "who", "invite", "sent", "import", "meintro"].forEach((s) => { $("#screen-" + s).hidden = s !== name; });
+    if (name !== "main" && typeof endCoach === "function" && coachId) { $("#coach").hidden = true; coachId = null; $$(".coach-pulse").forEach((x) => x.classList.remove("coach-pulse")); }
   }
 
   function showMain(tab) {
@@ -1317,8 +1422,11 @@
     S.tab = tab;
     ["discover", "saved", "people"].forEach((t) => { $("#tab-" + t).hidden = t !== tab; });
     $$(".tabbar button").forEach((b) => b.classList.toggle("on", b.dataset.tab === tab));
-    if (tab === "saved") renderSaved();
+    if (tab === "saved") { renderSaved(); hintsOnSaved(); }
     if (tab === "people") renderPeople();
+    if (tab === "discover") setTimeout(swipeHint, 50);
+    if (coachId && !(coachId === "saved" && tab === "saved")) endCoach();
+    else if (coachId === "saved" && tab === "saved") endCoach("saved");
   }
 
   let toastT;
@@ -1348,6 +1456,10 @@
     const act = el.dataset.act, id = el.dataset.id;
     switch (act) {
       case "start-quiz": startQuiz({ mode: "me" }); break;
+      case "intro-next": introNext(); break;
+      case "intro-skip": finishIntro(); break;
+      case "how-it-works": howItWorks(); break;
+      case "coach-ok": endCoach(); break;
       case "edit-me": startQuiz({ mode: "me", after: "main" }); break;
       case "meintro-go": startQuiz({ mode: "me", after: "main" }); break;
       case "meintro-later": showMain("discover"); break;
@@ -1378,11 +1490,11 @@
       case "open-filters": openFilters(); break;
       case "apply-filters": applyFilters(); break;
       case "reset-filters": S.pending = Store.defaultFilters(Store.active().answers); renderFilters(); break;
-      case "open-spin": openSpin(); break;
+      case "open-spin": if (coachId === "spin") endCoach(); openSpin(); break;
       case "close-spin": $("#modal-spin").hidden = true; break;
       case "spin": doSpin(); break;
       case "share-winner": shareIdea(el.dataset.id); break;
-      case "open-idea": openIdea(id); break;
+      case "open-idea": if (coachId === "send") endCoach(); markSeen("send"); openIdea(id); break;
       case "close-idea": $("#modal-idea").hidden = true; break;
       case "unsave":
         e.stopPropagation();
@@ -1405,7 +1517,7 @@
       case "unskip": Store.clearSkipped(id); if (Store.active().id === id) { S.history = []; rebuildDeck(); } renderPeople(); toast("Skipped ideas are back in the deck"); break;
       case "unskip-all": Store.clearSkipped(Store.active().id); S.history = []; rebuildDeck(); break;
       case "delete": armDelete(el, id); break;
-      case "open-ai": openAI(); break;
+      case "open-ai": if (coachId === "ai") endCoach(); openAI(); break;
       case "close-ai": $("#sheet-ai").hidden = true; break;
       case "run-ai": runAI(); break;
       case "cancel-ai": stopAI(); $("#ai-loading").hidden = true; $("#ai-form").hidden = false; break;
@@ -1439,7 +1551,7 @@
     if (Store.active() && !Store.me()) show("meintro");      // older profiles: ask about "you" once
     else if (Store.active()) showMain("discover");
     else if (Store.me()) showWho();
-    else show("welcome");
+    else showIntro(false);
   }
   checkMailbox();
 })();

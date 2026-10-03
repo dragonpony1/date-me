@@ -44,8 +44,13 @@ const bday = (age) => { const d = new Date(); d.setFullYear(d.getFullYear() - ag
   ok(near && near.url === "https://www.google.com/maps/search/goat%20yoga%20near%20Salt%20Lake%20City%2C%20UT", "goat yoga card says where: Google Maps near Salt Lake");
   const outings = all.filter((i) => i.tr >= 1 && i.source === "library");
   const noWhere = outings.filter((i) => !Shop.nearby(i, null));
-  ok(noWhere.length <= 12, `almost every outing card says where to go (${outings.length - noWhere.length}/${outings.length})`);
+  ok(noWhere.length <= 22, `almost every outing card says where to go (${outings.length - noWhere.length}/${outings.length})`);
   ok(!Shop.nearby(all.find((i) => i.id === "blanket-fort-movie-marathon"), null), "at-home ideas don't get a map link");
+  const mapIds = new Set([...Object.keys(Shop.MAP_Q || {}), ...[...(Shop.NO_MAP || [])]]);
+  const badMap = [...mapIds].filter((id) => !ids.has(id));
+  ok(badMap.length === 0, "every map override points at a real idea" + (badMap.length ? ": " + badMap.join(", ") : ""));
+  const titleSearch = all.filter((i) => i.y && i.tr >= 1 && !Shop.MAP_Q[i.id] && !Shop.BOOK[i.id] && !Spots.kindFor(i) && !Shop.NO_MAP.has(i.id));
+  ok(titleSearch.length === 0, "no new 16-25 card searches the map for its own title" + (titleSearch.length ? ": " + titleSearch.map((i) => i.t).join(", ") : ""));
   const kitLink = Shop.linksFor({ id: "tie-dye-shirts" }, null)[0];
   ok(kitLink && kitLink.url.startsWith("https://www.amazon.com/s?k=tie+dye+kit"), "tie-dye card links to an Amazon search for a tie dye kit");
 
