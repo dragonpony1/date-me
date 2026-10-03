@@ -144,6 +144,13 @@
       if (has == null && !COMMON_FEATURES.has(need)) return "place";
     }
 
+    // Needs a business: only if Google confirmed one within reach.
+    if (ctx.verify && !ctx.skipVerify && DM.Verify) {
+      const v = DM.Verify.check(idea, place, filters);
+      if (v === "no") return "unavailable";
+      if (v === "unchecked") return "unchecked";
+    }
+
     if (filters) {
       if (idea.c > filters.budget) return "budget";
       if (filters.io === "in" && idea.io === "out") return "io";
@@ -335,6 +342,7 @@
       place,
       filters: profile.filters,
       seed: profile.id + now.toDateString(),
+      verify: !!(place && DM.Verify && DM.Verify.active()),
       profileId: profile.id,
       exclude: new Set([...profile.saved.map((x) => x.id), ...profile.skipped]),
       ...extra,

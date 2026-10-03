@@ -1,6 +1,6 @@
 /* Date Me — screens, quiz, swiping, spin. */
 (function () {
-  const { Store, Engine, Location, Spots, AI, Shop, Invite } = window.DateMe;
+  const { Store, Engine, Location, Spots, AI, Shop, Invite, Verify } = window.DateMe;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -562,6 +562,7 @@
       if (p && p.place && p.place.lat === place.lat && p.place.lon === place.lon) {
         place.spots = { ...(p.place.spots || {}), ...(place.spots || {}) };
         place.spotsAt = { ...(p.place.spotsAt || {}), ...(place.spotsAt || {}) };
+        place.avail = { ...(p.place.avail || {}), ...(place.avail || {}) };
         Store.setPlace(profileId, strip(place));
         if (Store.active() && Store.active().id === profileId && !$("#screen-main").hidden) { renderStatus(); rebuildDeck(true); }
       }
@@ -622,6 +623,39 @@
     S.deck = ranked;
     renderDeck();
     renderStatus();
+    verifyDeck();
+  }
+
+  // Check the next ~45 ideas that need a business against Google, a dozen at a time,
+  // and reshuffle the deck as answers come in (keeping the card on top where it is).
+  let verifying = false;
+  async function verifyDeck() {
+    const p = Store.active();
+    if (verifying || !p || !p.place || !Verify.active() || !S.candidates) return;
+    verifying = true;
+    renderStatus();
+    try {
+      for (let round = 0; round < 5; round++) {
+        const top = Engine.rank(S.candidates, Engine.buildContext(p, { skipVerify: true })).slice(0, 45);
+        const qs = [...new Set(top.filter((e) => Verify.check(e.idea, p.place, p.filters) === "unchecked").map((e) => Verify.queryFor(e.idea)))];
+        if (!qs.length) break;
+        await Promise.all([qs.slice(0, 12), qs.slice(12, 24)].filter((b) => b.length).map((b) => Verify.fill(b, p.place)));
+        Store.save();
+        if (Store.active() !== p) break;
+        const ranked = Engine.rank(S.candidates, Engine.buildContext(p));
+        if (S.deck[0]) {
+          const i = ranked.findIndex((r) => r.idea.id === S.deck[0].idea.id);
+          if (i > 0) ranked.unshift(ranked.splice(i, 1)[0]);
+        }
+        S.deck = ranked;
+        renderDeck();
+        if (!Verify.active()) break;
+      }
+    } finally {
+      verifying = false;
+      renderStatus();
+      if (!$("#screen-main").hidden && !S.deck.length) renderDeck();
+    }
   }
 
   function cardHTML(entry) {
@@ -663,6 +697,8 @@
     const kind = Spots.kindFor(idea);
     if (!p) return "";
     if (Shop.EVENTS[idea.id]) return findLine(idea); // the event's page, not the building it's held in
+    const real = p.place ? Verify.nearest(idea, p.place, p.filters) : null;
+    if (real && real.length) return `<div class="place-line">📍 ${spotLink(real[0])}${real.length > 1 ? ` <small>+${real.length - 1} more</small>` : ""}</div>`;
     const list = kind && p.place ? Spots.forIdea(idea, p.place) : null;
     if (list && list.length) return `<div class="place-line">📍 ${spotLink(list[0])}${list.length > 1 ? ` <small>+${list.length - 1} more</small>` : ""}</div>`;
     return findLine(idea);
@@ -691,7 +727,7 @@
   function prefetchSpots() {
     const p = Store.active();
     if (!p || !p.place) return;
-    const kinds = [...new Set(S.deck.slice(0, 4).map((e) => Spots.kindFor(e.idea)).filter(Boolean))];
+    const kinds = [...new Set(S.deck.slice(0, 4).filter((e) => !(Verify.active() && Verify.queryFor(e.idea))).map((e) => Spots.kindFor(e.idea)).filter(Boolean))];
     kinds.forEach((kind) => requestSpot(kind));
   }
 
@@ -739,6 +775,7 @@
 
   function emptyHTML() {
     const p = Store.active();
+    if (verifying || Verify.busy()) return `<div class="empty"><div class="loading-heart">🔎</div><p>Checking what's actually near you…</p></div>`;
     const btns = [`<button class="btn-grad" data-act="open-ai">✨ Get AI ideas for ${esc(p.name)}</button>`];
     if (!sameFilters(p.filters, Store.defaultFilters(p.answers))) btns.push(`<button class="btn-grad" data-act="open-filters">Loosen filters</button>`);
     if (p.skipped.length) btns.push(`<button class="btn-grad" data-act="unskip-all">Bring back ${p.skipped.length} skipped</button>`);
@@ -806,6 +843,7 @@
     renderDeck();
     renderStatus();
     hintsAfterSwipe(dir);
+    verifyDeck();
   }
 
   function undo() {
@@ -834,6 +872,8 @@
       pills.push(`<button class="pill hot" data-act="change-loc" data-id="${p.id}">📍 Add location</button>`);
     }
     if (!p.answers) pills.push(`<button class="pill hot" data-act="tab" data-tab="people">⏳ Waiting on ${esc(p.name)}</button>`);
+    if (p.place && (verifying || Verify.busy())) pills.push(`<span class="pill">🔎 Checking what's near you…</span>`);
+    else if (p.place && Verify.status() === "on") pills.push(`<span class="pill">✓ Only things near you</span>`);
     pills.push(`<span class="pill">${SEASON_PILL[ctx.season]}</span>`);
     const f = p.filters, bits = [];
     bits.push(f.budget === 0 ? "Free" : "Up to " + Engine.fmtCost(f.budget));
@@ -946,6 +986,7 @@
     let spotsHTML = "";
     if (i.place) spotsHTML = spotLine(i);
     else if (Shop.EVENTS[i.id]) spotsHTML = findLine(i);
+    else if (p.place && (Verify.nearest(i, p.place, p.filters) || []).length) spotsHTML = `<div class="spot-list"><b>Near you</b>${Verify.nearest(i, p.place, p.filters).map((sp) => `<div>📍 ${spotLink(sp)}</div>`).join("")}</div>`;
     else if (list && list.length) spotsHTML = `<div class="spot-list"><b>Near you</b>${list.map((sp) => `<div>📍 ${spotLink(sp)}</div>`).join("")}</div>${findLine(i).replace("Find ", "Find more ")}`;
     else {
       spotsHTML = findLine(i);
@@ -1197,7 +1238,8 @@
     const kind = i.spot || Spots.kindFor(i);
     const list = kind && p.place ? Spots.forIdea({ ...i, spot: kind }, p.place) : null;
     const near = Shop.nearby(i, p.place);
-    const where = list && list.length && !Shop.EVENTS[i.id] ? `\n📍 ${list[0].name} (${list[0].dist})\n${list[0].url}` : near && near.event ? `\n📅 ${near.url}` : "";
+    const real = p.place ? Verify.nearest(i, p.place, p.filters) : null;
+    const where = real && real.length ? `\n📍 ${real[0].name} (${real[0].dist})\n${real[0].url}` : list && list.length && !Shop.EVENTS[i.id] ? `\n📍 ${list[0].name} (${list[0].dist})\n${list[0].url}` : near && near.event ? `\n📅 ${near.url}` : "";
     shareText(`${i.e} Date idea: ${i.t}\n${i.d}\n${Engine.fmtCost(i.c)} · ${Engine.fmtTime(i.m)}${where}\n\nWant to? 💘\n\n(found on Date Me: ${appUrl()})`);
   }
 

@@ -2,7 +2,7 @@
 const fs = require("fs"), vm = require("vm"), path = require("path");
 const ctx = { window: {}, console, setTimeout, Promise, URL };
 ctx.window = ctx; vm.createContext(ctx);
-for (const f of ["engine.js", "spots.js", "ideas.js", "shop.js"]) vm.runInContext(fs.readFileSync(path.join(__dirname, "../js", f), "utf8"), ctx);
+for (const f of ["engine.js", "spots.js", "ideas.js", "shop.js", "verify.js"]) vm.runInContext(fs.readFileSync(path.join(__dirname, "../js", f), "utf8"), ctx);
 const { Engine, IDEAS } = ctx.DateMe;
 let fails = 0;
 const ok = (cond, msg) => { console.log((cond ? "  ok  " : "  FAIL") + "  " + msg); if (!cond) fails++; };
@@ -87,6 +87,24 @@ const bday = (age) => { const d = new Date(); d.setFullYear(d.getFullYear() - ag
   ok(Engine.ageOf(typed) === 17, "an age typed in last year counts as a year older now");
   ok(Engine.ageOf({ age: 19, ageAt: Date.now() }) === 19, "an age typed today is that age");
 
+  // Only what's actually near you
+  const { Verify } = ctx.DateMe;
+  const slc = { lat: 40.76, lon: -111.89, cc: "US", features: {}, avail: {
+    "bowling alley": { at: Date.now(), list: [{ n: "Fat Cats", a: "SLC", lat: 40.74, lon: -111.9, d: 2600, url: "https://maps.google.com/?cid=1" }] },
+    "goat yoga": { at: Date.now(), list: [] },
+    "boba": { at: Date.now(), list: [{ n: "Far Boba", a: "Ogden", lat: 41.2, lon: -111.97, d: 49000, url: "" }] },
+  } };
+  const vctx = (filters) => Engine.buildContext({ id: "v", answers: { ...base, birthdate: bday(22) }, place: slc, saved: [], skipped: [], filters: filters || { budget: 3, io: "any", time: "any", dist: 3 } }, { me: null });
+  const byId = (id) => all.find((i) => i.id === id);
+  ok(Verify.check(byId("glow-bowling"), slc, null) === "yes" && !Engine.blocked(byId("glow-bowling"), vctx()), "bowling shows: Google found Fat Cats 1.6 mi away");
+  ok(Engine.blocked(byId("goat-yoga"), vctx()) === null || Verify.queryFor(byId("goat-yoga")) === null, "goat yoga is an event search, not a place check");
+  ok(Engine.blocked(byId("boba-crawl"), vctx()) === "unavailable", "boba 30 mi away is too far for a close-by idea: hidden");
+  ok(Engine.blocked(byId("escape-room"), vctx()) === "unchecked", "not checked yet: hidden until Google answers");
+  ok(Engine.blocked(byId("picnic-in-the-park"), vctx()) === null, "parks aren't checked: picnic always shows");
+  ok(Engine.blocked(byId("glow-bowling"), vctx({ budget: 3, io: "any", time: "any", dist: 0 })) !== null, "'stay home' hides even a nearby bowling alley");
+  const real = Verify.nearest(byId("glow-bowling"), slc, null);
+  ok(real && real[0].name === "Fat Cats" && real[0].dist === "1.6 mi", "the card names the real place: 'Fat Cats · 1.6 mi'");
+
   // 16-25 tuning
   const teenHome = Engine.rank(all, Engine.buildContext({ id: "t", answers: { ...base, outAbout: 1, active: 1, adventure: 2, birthdate: bday(16) }, place: null, saved: [], skipped: [], filters: { budget: 1, io: "any", time: "any", dist: 3 } }, { me: { ...base, outAbout: 2, birthdate: bday(17), getAround: "ride" } }));
   const top12 = teenHome.slice(0, 12).map((r) => r.idea);
@@ -98,7 +116,7 @@ const bday = (age) => { const d = new Date(); d.setFullYear(d.getFullYear() - ag
   ok(teenHome.slice(0, 15).filter((r) => r.idea.y).length >= 6, `made-for-them ideas lead the deck (${teenHome.slice(0, 15).filter((r) => r.idea.y).length}/15)`);
   console.log("  Teen homebody top 8: " + teenHome.slice(0, 8).map((r) => r.idea.e + " " + r.idea.t).join(", "));
 
-  const rank = (p, extra) => Engine.rank(all, Engine.buildContext(p, extra));
+  const rank = (p, extra) => Engine.rank(all, Engine.buildContext(p, { verify: false, ...extra })); // older checks: no Google check
   const teen = rank(prof({ birthdate: bday(17) }));
   ok(!teen.some((r) => r.idea.age > 17), "17-year-old sees nothing 18+ or 21+");
   const twenty = rank(prof({ birthdate: bday(20) }));
