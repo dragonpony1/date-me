@@ -134,6 +134,40 @@
       </div>
     </div>
 
+    <!-- AI planner -->
+    <div id="sheet-ai" class="overlay" hidden>
+      <div class="sheet" role="dialog" aria-label="AI planner">
+        <div class="grabber"></div>
+        <div id="ai-form">
+          <h3 id="ai-title">✨ Plan something</h3>
+          <p class="ai-sub" id="ai-sub"></p>
+          <div class="f-group"><label>Anything to aim for? (optional)</label>
+            <div class="chips" id="ai-chips">
+              <button class="chip" data-ask="It might rain, so mostly indoors">🌧️ Rainy day</button>
+              <button class="chip" data-ask="Keep it super cheap">💸 Super cheap</button>
+              <button class="chip" data-ask="It's a special occasion, make it feel special">🎉 Special occasion</button>
+              <button class="chip" data-ask="It's an early date, so easy to talk and low pressure">🌱 Early dates</button>
+              <button class="chip" data-ask="Something we could do tonight">🌙 Tonight</button>
+              <button class="chip" data-ask="Surprise us with unusual ideas we wouldn't think of">🎲 Surprise us</button>
+            </div>
+          </div>
+          <div class="f-group"><label for="ai-text">Anything else?</label>
+            <textarea id="ai-text" class="ai-text" maxlength="200" rows="2" placeholder="e.g. they just got a puppy, or we only have Sunday morning"></textarea>
+          </div>
+          <div class="sheet-btns">
+            <button class="btn-link" data-act="close-ai">Cancel</button>
+            <button class="btn-grad wide" data-act="run-ai">✨ Make 5 ideas</button>
+          </div>
+          <p class="fine dark ai-fine">Shares their quiz answers (not their name) and your area with the AI to write the ideas.</p>
+        </div>
+        <div id="ai-loading" class="ai-loading" hidden>
+          <div class="ai-spark">✨</div>
+          <p id="ai-msg">Reading their answers…</p>
+          <button class="btn-link" data-act="cancel-ai">Cancel</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Spin -->
     <div id="modal-spin" class="overlay center" hidden>
       <div class="spin-box">
@@ -163,7 +197,8 @@
   <script src="js/location.js"></script>
   <script src="js/spots.js"></script>
   <script src="js/ideas.js"></script>
-  <!-- Future idea sources go here, e.g. <script src="js/sources/places.js"></script> -->
+  <script src="js/ai.js"></script>
+  <!-- More idea sources go here, e.g. <script src="js/sources/places.js"></script> -->
   <script src="js/app.js"></script>
 </body>
 </html>

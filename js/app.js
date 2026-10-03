@@ -1,6 +1,6 @@
 /* Date Me — screens, quiz, swiping, spin. */
 (function () {
-  const { Store, Engine, Location, Spots } = window.DateMe;
+  const { Store, Engine, Location, Spots, AI } = window.DateMe;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -15,6 +15,7 @@
     pending: null,     // filters being edited in the sheet
     spin: null,        // { n, pos, winner }
     spotTried: new Set(), // place kinds we've already asked about this session
+    ai: null,             // { ctl, timer } while the AI planner is working
   };
 
   // ======================================================================
@@ -477,7 +478,7 @@
 
   function emptyHTML() {
     const p = Store.active();
-    const btns = [];
+    const btns = [`<button class="btn-grad" data-act="open-ai">✨ Get AI ideas for ${esc(p.name)}</button>`];
     if (!sameFilters(p.filters, Store.defaultFilters(p.answers))) btns.push(`<button class="btn-grad" data-act="open-filters">Loosen filters</button>`);
     if (p.skipped.length) btns.push(`<button class="btn-grad" data-act="unskip-all">Bring back ${p.skipped.length} skipped</button>`);
     if (!p.place) btns.push(`<button class="btn-grad" data-act="change-loc" data-id="${p.id}">Add your location</button>`);
@@ -564,7 +565,7 @@
     const p = Store.active();
     if (!p) return;
     const ctx = Engine.buildContext(p);
-    const pills = [];
+    const pills = [`<button class="pill ai" data-act="open-ai">✨ Plan with AI</button>`];
     if (p.place) {
       const wx = p.place.weather;
       pills.push(`<button class="pill" data-act="change-loc" data-id="${p.id}">${wx ? `${wx.emoji} ${wx.temp}${wx.unit} · ` : "📍 "}${esc(p.place.label)}</button>`);
@@ -765,6 +766,83 @@
   }
 
   // ======================================================================
+  //  AI PLANNER
+  // ======================================================================
+  const AI_MSGS = [
+    (p) => `Reading ${p.name}'s answers…`,
+    (p) => p.place ? `Checking what's near ${p.place.label.split(",")[0]}…` : "Thinking about what works anywhere…",
+    () => "Looking for things happening this week…",
+    (p) => p.place && p.place.weather ? `Peeking at the weather (${p.place.weather.temp}${p.place.weather.unit})…` : "Thinking about the season…",
+    () => "Making sure the places are real…",
+    () => "Writing your ideas…",
+    () => "Almost there…",
+  ];
+
+  function openAI() {
+    const p = Store.active();
+    $("#ai-title").textContent = `✨ Plan something for ${p.name}`;
+    $("#ai-sub").textContent = `The AI looks at ${p.name}'s answers${p.place ? ", what's around " + p.place.label.split(",")[0] : ""}, the season and the weather, then writes 5 ideas just for them.`;
+    $$("#ai-chips .chip").forEach((c) => c.classList.remove("on"));
+    $("#ai-text").value = "";
+    $("#ai-form").hidden = false;
+    $("#ai-loading").hidden = true;
+    $("#sheet-ai").hidden = false;
+  }
+
+  function stopAI() {
+    if (!S.ai) return;
+    clearInterval(S.ai.timer);
+    S.ai.ctl.abort();
+    S.ai = null;
+  }
+
+  async function runAI() {
+    const p = Store.active();
+    const asks = $$("#ai-chips .chip.on").map((c) => c.dataset.ask);
+    const extra = $("#ai-text").value.trim();
+    const request = [...asks, extra].filter(Boolean).join(". ");
+    $("#ai-form").hidden = true;
+    $("#ai-loading").hidden = false;
+    let i = 0;
+    $("#ai-msg").textContent = AI_MSGS[0](p);
+    const ctl = new AbortController();
+    S.ai = { ctl, timer: setInterval(() => { i = Math.min(i + 1, AI_MSGS.length - 1); $("#ai-msg").textContent = AI_MSGS[i](p); }, 4500) };
+    try {
+      const ideas = await AI.plan(p, request, ctl.signal);
+      if (!S.ai || S.ai.ctl !== ctl) return; // cancelled
+      clearInterval(S.ai.timer);
+      S.ai = null;
+      Store.addAiIdeas(p.id, ideas);
+      const ctx = Engine.buildContext(p);
+      const fresh = ideas.map((raw) => Engine.normalize(raw, "ai"));
+      if (S.candidates) S.candidates.unshift(...fresh);
+      const entries = fresh.map((idea) => Engine.score(idea, ctx));
+      S.deck = [...entries, ...S.deck.filter((e) => !fresh.some((f) => f.id === e.idea.id))];
+      $("#sheet-ai").hidden = true;
+      setTab("discover");
+      renderDeck(entries[0] && entries[0].idea.id);
+      renderStatus();
+      confetti();
+      toast(`✨ ${entries.length} new ideas for ${p.name}`);
+    } catch (e) {
+      if (!S.ai || S.ai.ctl !== ctl) return;
+      stopAI();
+      $("#ai-loading").hidden = true;
+      $("#ai-form").hidden = false;
+      toast(aiErrorText(e));
+    }
+  }
+
+  function aiErrorText(e) {
+    switch (e.code) {
+      case "limit": return e.who === "phone" ? "That's today's AI plans for this phone. More tomorrow!" : "The AI planner is resting for today. Try tomorrow!";
+      case "not_ready": case "bad_key": return "The AI planner is almost ready. Check back soon!";
+      case "network": return "Couldn't reach the planner. Check your connection.";
+      default: return "The planner got stuck. Try again in a minute.";
+    }
+  }
+
+  // ======================================================================
   //  PEOPLE
   // ======================================================================
   function renderPeople() {
@@ -929,11 +1007,20 @@
       case "unskip": Store.clearSkipped(id); if (Store.active().id === id) { S.history = []; rebuildDeck(); } renderPeople(); toast("Skipped ideas are back in the deck"); break;
       case "unskip-all": Store.clearSkipped(Store.active().id); S.history = []; rebuildDeck(); break;
       case "delete": armDelete(el, id); break;
+      case "open-ai": openAI(); break;
+      case "close-ai": $("#sheet-ai").hidden = true; break;
+      case "run-ai": runAI(); break;
+      case "cancel-ai": stopAI(); $("#ai-loading").hidden = true; $("#ai-form").hidden = false; break;
     }
   });
 
   // Tap outside a sheet/modal closes it.
-  $$(".overlay").forEach((ov) => ov.addEventListener("click", (e) => { if (e.target === ov && !(S.spin && S.spin.spinning)) ov.hidden = true; }));
+  $$(".overlay").forEach((ov) => ov.addEventListener("click", (e) => {
+    if (e.target !== ov || (S.spin && S.spin.spinning) || (ov.id === "sheet-ai" && S.ai)) return;
+    ov.hidden = true;
+  }));
+
+  $$("#ai-chips .chip").forEach((c) => c.addEventListener("click", () => c.classList.toggle("on")));
 
   $("#loc-form").addEventListener("submit", (e) => { e.preventDefault(); $("#loc-input").blur(); locSearch($("#loc-input").value); });
 

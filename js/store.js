@@ -102,6 +102,14 @@
     },
     clearSkipped(id) { const p = state.profiles[id]; if (p) { p.skipped = []; save(); } },
 
+    // Ideas the AI planner wrote for this person (newest first, last 40 kept).
+    addAiIdeas(id, ideas) {
+      const p = state.profiles[id];
+      if (!p) return;
+      p.aiIdeas = [...ideas, ...(p.aiIdeas || [])].slice(0, 40);
+      save();
+    },
+
     // Only what the saved list needs to draw a card.
     snapshot(idea) {
       const { id, t, e, cat, d, c, m, io, place, spot } = idea;

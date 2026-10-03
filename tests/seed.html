@@ -1,6 +1,6 @@
 <!doctype html>
 <!-- Test fixture: loads a sample profile, then shows the app at phone size.
-     ?view=deck | saved | spin | filters | people | idea | interests | welcome
+     ?view=deck | saved | spin | filters | people | idea | interests | ai | aicard | welcome
      Overwrites this browser's Date Me data, so only use it on a test browser. -->
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>html,body{margin:0}iframe{border:0;position:fixed;left:0;top:0;width:375px;height:812px}</style></head>
 <body>
@@ -23,6 +23,7 @@
       snap("pumpkin-patch", "Pumpkin patch", "🎃", "seasonal", "Find the biggest, weirdest pumpkin in the field.", 1, 120, "out"),
     ],
     skipped: [], filters: { budget: 2, io: "any", time: "any", dist: 3 },
+    aiIdeas: view === "aicard" ? [{ id: "ai:bird-show-ramen-test", t: "Bird show & ramen", e: "🦜", cat: "culture", d: "Catch the indoor bird show at the aviary, then warm up with big bowls of ramen.", aiWhy: "they love animals and it's chilly", c: 2, m: 180, io: "in", w: "a", int: ["animals", "artsy", "outdoorsy"], love: ["time"], fd: [], act: 2, adv: 5, crowd: 4, food: 6, tr: 1, age: 0, place: { name: "Tracy Aviary", url: "https://www.google.com/maps/search/Tracy%20Aviary" } }] : [],
   };
   if (view === "welcome") localStorage.removeItem("dateme:v1");
   else localStorage.setItem("dateme:v1", JSON.stringify({ version: 1, activeId: "test1", profiles: { test1: profile } }));
@@ -37,6 +38,7 @@
     if (view === "filters") click('[data-act="open-filters"]');
     if (view === "idea") { click('.tabbar [data-tab="saved"]'); setTimeout(() => click(".s-item"), 100); }
     if (view === "interests") { click('[data-act="tab"][data-tab="people"]'); click('[data-act="edit"]'); for (let k = 0; k < 8; k++) click("#quiz-next"); }
+    if (view === "ai") { click('[data-act="open-ai"]'); d.querySelectorAll("#ai-chips .chip")[0].click(); d.querySelectorAll("#ai-chips .chip")[4].click(); }
     if (view === "spin") { click('[data-act="open-spin"]'); setTimeout(() => click("#spin-btn"), 100); }
   }, 1500);
 </script>

@@ -226,6 +226,9 @@
       else if (wx.nice && idea.io === "out") { s += 0.4; reasons.push([0.6, "great weather for it"]); }
     }
 
+    // AI picks were written for this person; trust them a little extra and lead with their reason.
+    if (idea.aiWhy) { s += 1.5; reasons.push([3, idea.aiWhy]); }
+
     // A pinch of randomness so the deck feels fresh each day.
     s += (hash01(idea.id + ctx.seed) - 0.5) * 1.2;
 
@@ -233,6 +236,7 @@
     reasons.sort((x, y) => y[0] - x[0]);
     const why = [...new Set(reasons.map((r) => r[1]))].slice(0, 2);
     const badges = [];
+    if (idea.source === "ai") badges.push("✨ AI pick");
     if (idea.s && idea.s.length <= 2) badges.push(`${SEASON_EMOJI[ctx.season]} In season`);
     if (nearHit) badges.push("📍 Near you");
     if (idea.place) badges.push("📍 Real spot");
@@ -260,6 +264,7 @@
       place,
       filters: profile.filters,
       seed: profile.id + now.toDateString(),
+      profileId: profile.id,
       exclude: new Set([...profile.saved.map((x) => x.id), ...profile.skipped]),
       ...extra,
     };

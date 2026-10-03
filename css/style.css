@@ -196,6 +196,15 @@ input[type="range"].slider::-moz-range-thumb { width: 40px; height: 40px; border
 .status-row::-webkit-scrollbar { display: none; }
 .pill { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 99px; background: var(--surface); border: 1.5px solid var(--line); font-size: 14px; font-weight: 600; color: var(--ink-2); white-space: nowrap; }
 .pill.hot { color: var(--pink); border-color: rgba(255,46,126,.35); }
+.pill.ai { background: var(--grad); color: #fff; border-color: transparent; font-weight: 800; box-shadow: 0 4px 12px rgba(255,46,126,.3); }
+.ai-sub { color: var(--ink-2); margin: 4px 0 0; line-height: 1.4; }
+.ai-text { width: 100%; border: 2px solid var(--line); border-radius: 16px; padding: 12px 14px; font: inherit; font-size: 16px; background: var(--surface); color: var(--ink); resize: none; outline: none; }
+.ai-text:focus { border-color: var(--pink); }
+.ai-fine { padding: 12px 0 0; font-size: 12px; }
+.ai-loading { text-align: center; padding: 34px 10px 10px; }
+.ai-spark { font-size: 72px; animation: spark 1.6s ease-in-out infinite; }
+@keyframes spark { 0%, 100% { transform: scale(1) rotate(0); } 50% { transform: scale(1.2) rotate(18deg); } }
+.ai-loading p { font-size: 18px; font-weight: 700; margin: 14px 0 8px; min-height: 26px; }
 
 /* deck */
 .deck { position: relative; flex: 1; min-height: 0; margin: 0 16px 26px; }
