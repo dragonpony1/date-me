@@ -72,6 +72,10 @@ const bday = (age) => { const d = new Date(); d.setFullYear(d.getFullYear() - ag
   const ageCtx = Engine.buildContext({ id: "x", answers: { ...base, birthdate: bday(22) }, place: null, saved: [], skipped: [] }, { me: { ...base, birthdate: bday(19) } });
   ok(ageCtx.age === 19, "age rules use the younger of the two");
 
+  const typed = { age: 16, ageAt: Date.now() - 400 * 864e5 }; // entered 16 a bit over a year ago
+  ok(Engine.ageOf(typed) === 17, "an age typed in last year counts as a year older now");
+  ok(Engine.ageOf({ age: 19, ageAt: Date.now() }) === 19, "an age typed today is that age");
+
   // 16-25 tuning
   const teenHome = Engine.rank(all, Engine.buildContext({ id: "t", answers: { ...base, outAbout: 1, active: 1, adventure: 2, birthdate: bday(16) }, place: null, saved: [], skipped: [], filters: { budget: 1, io: "any", time: "any", dist: 3 } }, { me: { ...base, outAbout: 2, birthdate: bday(17), getAround: "ride" } }));
   const top12 = teenHome.slice(0, 12).map((r) => r.idea);

@@ -136,6 +136,12 @@ input { font: inherit; }
 .field::placeholder { color: #b9a3b1; font-weight: 500; }
 .field:focus { box-shadow: 0 0 0 4px rgba(255,255,255,.45), 0 6px 20px rgba(90,0,40,.2); }
 input[type="date"].field { appearance: none; -webkit-appearance: none; display: block; line-height: 60px; }
+.age-picker { display: flex; align-items: center; gap: 14px; justify-content: center; margin-top: 8px; }
+.age-field { width: 140px; text-align: center; font-size: 44px; font-weight: 800; min-height: 84px; padding: 0 8px; -moz-appearance: textfield; }
+.age-field::-webkit-outer-spin-button, .age-field::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.age-step { width: 64px; height: 64px; border-radius: 50%; background: rgba(255,255,255,.2); border: 2px solid rgba(255,255,255,.45); color: #fff; font-size: 34px; font-weight: 700; line-height: 1; }
+.age-step:active { transform: scale(.92); }
+.age-picker + .age-note { text-align: center; }
 .age-note { margin-top: 16px; font-size: 18px; font-weight: 600; min-height: 50px; line-height: 1.35; }
 .age-note small { display: block; font-weight: 500; opacity: .85; font-size: 15px; }
 

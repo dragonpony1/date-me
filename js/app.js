@@ -40,9 +40,9 @@
     { key: "name", type: "text", emoji: "💘",
       q: { me: "First, what's your name?", them: "Who are you planning for?", self: "What's your name?" },
       sub: { me: "Just your first name. It shows on quizzes you send.", them: "Their first name or a nickname. It only lives on this phone.", self: "So {from} knows it's you." } },
-    { key: "birthdate", type: "date", emoji: "🎂",
-      q: { you: "When's your birthday?", them: "When's {name}'s birthday?" },
-      sub: { me: "We keep ideas right for both your ages.", them: "We use their age to keep ideas age-appropriate.", self: "Only your age gets shared, never your birthday." } },
+    { key: "age", type: "age", emoji: "🎂",
+      q: { you: "How old are you?", them: "How old is {name}?" },
+      sub: { me: "We keep ideas right for both your ages.", them: "We use their age to keep ideas age-appropriate.", self: "So ideas fit your age." } },
     { key: "getAround", type: "choice", emoji: "🛵",
       q: { you: "How do you get around?", them: "How does {name} get around?" },
       sub: { all: "So we don't suggest trips you can't get to." },
@@ -104,7 +104,7 @@
   }
 
   function freshAnswers(name = "") {
-    return { name, birthdate: "", getAround: null, outdoorsy: 5, outAbout: 5, adventure: 5, active: 5, crowds: 5,
+    return { name, age: null, ageAt: null, getAround: null, outdoorsy: 5, outAbout: 5, adventure: 5, active: 5, crowds: 5,
       budget: null, foodie: null, dislikes: [], interests: [], love: null };
   }
 
@@ -118,6 +118,7 @@
     if (mode === "me" && answers.budget == null && Store.active() && Store.active().answers) answers.budget = Store.active().answers.budget ?? null;
     const steps = QUIZ.filter((s) => !s.only || s.only.includes(mode));
     if (answers.getAround === undefined) answers.getAround = null; // older answers didn't have it
+    if (answers.birthdate) { answers.age = Engine.ageOf(answers); answers.ageAt = Date.now(); delete answers.birthdate; } // older answers had a birthday
     S.quiz = { ...opts, mode, steps, i: 0, answers, dir: 1 };
     show("quiz");
     renderQuiz();
@@ -128,7 +129,7 @@
   function stepValid(step, a) {
     switch (step.type) {
       case "text": return a.name.trim().length > 0;
-      case "date": { const age = Engine.ageOf(a); return age != null && age >= 13 && age <= 100; }
+      case "age": { const age = Engine.ageOf(a); return age != null && age >= 13 && age <= 100; }
       case "choice": return a[step.key] != null;
       case "foodie": return a.foodie != null;
       default: return true;
@@ -154,9 +155,13 @@
 
     if (step.type === "text") {
       h += `<input id="q-input" class="field" type="text" maxlength="24" placeholder="${mode === "them" ? "Their name" : "Your name"}" value="${esc(a.name)}" autocomplete="off" enterkeyhint="next">`;
-    } else if (step.type === "date") {
-      const today = new Date().toISOString().slice(0, 10);
-      h += `<input id="q-input" class="field" type="date" min="1925-01-01" max="${today}" value="${esc(a.birthdate)}">`;
+    } else if (step.type === "age") {
+      const cur = Engine.ageOf(a);
+      h += `<div class="age-picker">
+        <button class="age-step" data-step="-1" aria-label="Younger">−</button>
+        <input id="q-input" class="field age-field" type="number" inputmode="numeric" pattern="[0-9]*" min="13" max="99" placeholder="—" value="${cur != null ? cur : ""}" aria-label="Age">
+        <button class="age-step" data-step="1" aria-label="Older">+</button>
+      </div>`;
       h += `<div class="age-note" id="age-note"></div>`;
     } else if (step.type === "slider") {
       const v = a[step.key];
@@ -203,21 +208,33 @@
       input.addEventListener("input", () => { a.name = input.value; refreshNext(); });
       input.addEventListener("keydown", (e) => { if (e.key === "Enter") quizNext(); });
       setTimeout(() => input.focus(), 350);
-    } else if (step.type === "date") {
+    } else if (step.type === "age") {
       const note = () => {
         const age = Engine.ageOf(a);
         const el = $("#age-note");
-        const who = mode === "them" ? `That makes ${esc(a.name)} ${age}` : `You're ${age}`;
+        const who = mode === "them" ? `${esc(a.name)} is ${age}` : `You're ${age}`;
         if (age == null) el.innerHTML = "";
         else if (age < 13) el.innerHTML = "Date Me is for ages 13 and up.";
-        else if (age > 100) el.innerHTML = "Hmm, double-check that year.";
+        else if (age > 100) el.innerHTML = "Hmm, double-check that.";
         else if (age < 18) el.innerHTML = `${who} 🎂<small>We'll keep every idea teen-friendly.</small>`;
         else if (age < 21) el.innerHTML = `${who} 🎂<small>No bar or alcohol ideas until 21.</small>`;
         else el.innerHTML = `${who} 🎂`;
       };
-      const set = () => { a.birthdate = input.value; delete a.age; delete a.ageAt; note(); refreshNext(); };
-      input.addEventListener("input", set);
-      input.addEventListener("change", set);
+      const set = (n) => {
+        a.age = Number.isFinite(n) && n > 0 ? Math.min(99, Math.round(n)) : null;
+        a.ageAt = a.age != null ? Date.now() : null;
+        delete a.birthdate;
+        note();
+        refreshNext();
+      };
+      input.addEventListener("input", () => set(parseInt(input.value, 10)));
+      input.addEventListener("keydown", (e) => { if (e.key === "Enter") quizNext(); });
+      $$(".age-step", $("#quiz-body")).forEach((b) => b.addEventListener("click", () => {
+        const now = Engine.ageOf(a);
+        const n = now == null ? 16 : Math.max(13, Math.min(99, now + +b.dataset.step));
+        input.value = n;
+        set(n);
+      }));
       note();
     } else if (step.type === "slider") {
       input.addEventListener("input", () => {
