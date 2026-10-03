@@ -108,14 +108,45 @@
     "rec-center-workout-date": "recreation center", "swings-sunset": "park with swings", "park-playground-takeover": "playground",
     "late-night-grocery-dare": "grocery store", "random-bus-ride": "bus station",
   };
+  // Things that happen on certain dates. Google Maps finds the building (the convention
+  // center), not the event (the comic con), so these do a web search for the event
+  // in their city: "comic con Salt Lake City, UT" -> the expo's own site and next dates.
+  // [what to search, "year" for yearly events | "week" for things that happen often]
+  const EVENTS = {
+    "comic-con-or-cosplay-day": ["comic con", "year"], "music-festival": ["music festival", "year"], "county-fair": ["county fair", "year"],
+    "holiday-market": ["holiday market", "year"], "fireworks-show": ["fireworks show", "year"], "ice-castles-or-ice-festival": ["ice castles", "year"],
+    "flower-fields": ["tulip festival", "year"], "pumpkin-patch": ["pumpkin patch", "year"], "corn-maze": ["corn maze", "year"],
+    "haunted-house": ["haunted house", "year"], "holiday-lights-drive": ["christmas lights", "year"], "run-a-5k-together": ["5k fun run", "year"],
+    "shakespeare-in-the-park": ["shakespeare in the park", "year"], "concert-in-the-park": ["free summer concerts in the park", "year"],
+    "outdoor-movie-in-the-park": ["outdoor movies in the park", "year"], "car-show-or-cars-coffee": ["cars and coffee", "week"],
+    "first-friday-art-walk": ["gallery stroll art walk", "week"], "open-mic-night": ["open mic night", "week"], "trivia-night": ["trivia night", "week"],
+    "comedy-show": ["comedy show", "week"], "improv-show": ["improv show", "week"], "silent-disco": ["silent disco", "week"],
+    "monster-truck-show": ["monster truck show", "year"], "big-broadway-style-musical": ["broadway touring show", "year"],
+    "symphony-night": ["symphony concert", "week"], "ballet-or-dance-show": ["ballet performance", "week"], "local-school-play": ["high school play", "week"],
+    "friday-night-game-food-after": ["high school football schedule", "week"], "author-reading-or-signing": ["author book signing", "week"],
+    "pet-adoption-event-visit": ["pet adoption event", "week"], "game-store-open-play-night": ["board game night", "week"],
+    "beginner-improv-class": ["drop-in improv class", "week"], "goat-yoga": ["goat yoga", "week"], "owl-prowl-night-walk": ["owl prowl night hike", "year"],
+  };
+  function eventUrl(q, when, place) {
+    const where = place && place.label ? place.label : "near me";
+    // Yearly events: no year in the search, so a con that already happened this year
+    // shows its next dates instead of old listings.
+    const tail = when === "year" ? "" : " this week";
+    return `https://www.google.com/search?q=${encodeURIComponent(`${q} ${where}${tail}`)}`;
+  }
+
   // Outings with no single place to go.
   const NO_MAP = new Set(["yes-day", "random-acts-of-kindness", "random-direction-drive", "scenic-drive-with-a-playlist", "day-trip-to-a-nearby-town",
     "gas-station-snack-road-trip", "audiobook-drive", "matching-outfits-day", "photo-walk", "geocaching-treasure-hunt", "ar-game-walk",
     "disposable-camera-scavenger-hunt", "slushie-bike-ride", "blend-playlist-walk", "make-each-other-a-scavenger-hunt",
     "driving-practice-date", "car-karaoke", "photo-dump-day", "paint-hide-kindness-rocks"]);
 
-  // { label, url } to find this kind of place near them, or null for at-home / anywhere ideas.
+  // { label, url, event } to find this near them, or null for at-home / anywhere ideas.
   function nearby(idea, place) {
+    if (EVENTS[idea.id]) {
+      const [q, when] = EVENTS[idea.id];
+      return { label: q, url: eventUrl(q, when, place), event: true };
+    }
     const kind = DM.Spots ? DM.Spots.kindFor(idea) : null;
     let q = MAP_Q[idea.id] || BOOK[idea.id] || (kind && KIND_Q[kind]);
     if (!q && idea.tr >= 1 && !NO_MAP.has(idea.id) && idea.source !== "ai") q = idea.t.toLowerCase();
@@ -153,5 +184,5 @@
     return out;
   }
 
-  DM.Shop = { AFFILIATE, KIT, BOOK, TICKETS, MAP_Q, NO_MAP, linksFor, nearby };
+  DM.Shop = { AFFILIATE, KIT, BOOK, TICKETS, MAP_Q, NO_MAP, EVENTS, linksFor, nearby };
 })();

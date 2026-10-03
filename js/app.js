@@ -662,6 +662,7 @@
     const p = Store.active();
     const kind = Spots.kindFor(idea);
     if (!p) return "";
+    if (Shop.EVENTS[idea.id]) return findLine(idea); // the event's page, not the building it's held in
     const list = kind && p.place ? Spots.forIdea(idea, p.place) : null;
     if (list && list.length) return `<div class="place-line">📍 ${spotLink(list[0])}${list.length > 1 ? ` <small>+${list.length - 1} more</small>` : ""}</div>`;
     return findLine(idea);
@@ -671,7 +672,9 @@
   function findLine(idea) {
     const p = Store.active();
     const near = Shop.nearby(idea, p && p.place);
-    return near ? `<div class="place-line">📍 <a href="${esc(near.url)}" target="_blank" rel="noopener">Find ${esc(near.label)} near you</a></div>` : "";
+    if (!near) return "";
+    const text = near.event ? `📅 <a href="${esc(near.url)}" target="_blank" rel="noopener">Find the next ${esc(near.label)} near you</a>` : `📍 <a href="${esc(near.url)}" target="_blank" rel="noopener">Find ${esc(near.label)} near you</a>`;
+    return `<div class="place-line">${text}</div>`;
   }
 
   function refreshSpotSlots(kind) {
@@ -942,6 +945,7 @@
     const list = kind && p.place ? Spots.forIdea({ ...i, spot: kind }, p.place) : null;
     let spotsHTML = "";
     if (i.place) spotsHTML = spotLine(i);
+    else if (Shop.EVENTS[i.id]) spotsHTML = findLine(i);
     else if (list && list.length) spotsHTML = `<div class="spot-list"><b>Near you</b>${list.map((sp) => `<div>📍 ${spotLink(sp)}</div>`).join("")}</div>${findLine(i).replace("Find ", "Find more ")}`;
     else {
       spotsHTML = findLine(i);
@@ -1192,7 +1196,8 @@
     const i = s.idea;
     const kind = i.spot || Spots.kindFor(i);
     const list = kind && p.place ? Spots.forIdea({ ...i, spot: kind }, p.place) : null;
-    const where = list && list.length ? `\n📍 ${list[0].name} (${list[0].dist})\n${list[0].url}` : "";
+    const near = Shop.nearby(i, p.place);
+    const where = list && list.length && !Shop.EVENTS[i.id] ? `\n📍 ${list[0].name} (${list[0].dist})\n${list[0].url}` : near && near.event ? `\n📅 ${near.url}` : "";
     shareText(`${i.e} Date idea: ${i.t}\n${i.d}\n${Engine.fmtCost(i.c)} · ${Engine.fmtTime(i.m)}${where}\n\nWant to? 💘\n\n(found on Date Me: ${appUrl()})`);
   }
 

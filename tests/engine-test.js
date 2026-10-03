@@ -41,7 +41,9 @@ const bday = (age) => { const d = new Date(); d.setFullYear(d.getFullYear() - ag
   console.log(`  (${new Set(shopIds).size} ideas have a kit, booking or ticket button)`);
   const goat = all.find((i) => i.id === "goat-yoga");
   const near = Shop.nearby(goat, { label: "Salt Lake City, UT" });
-  ok(near && near.url === "https://www.google.com/maps/search/goat%20yoga%20near%20Salt%20Lake%20City%2C%20UT", "goat yoga card says where: Google Maps near Salt Lake");
+  ok(near && near.event && near.url.includes("goat%20yoga%20Salt%20Lake%20City"), "goat yoga card says where: upcoming goat yoga near Salt Lake");
+  const bowl = Shop.nearby(all.find((i) => i.id === "glow-bowling"), { label: "Salt Lake City, UT" });
+  ok(bowl && !bowl.event && bowl.url === "https://www.google.com/maps/search/bowling%20alley%20near%20Salt%20Lake%20City%2C%20UT", "places like bowling still open Google Maps");
   const outings = all.filter((i) => i.tr >= 1 && i.source === "library");
   const noWhere = outings.filter((i) => !Shop.nearby(i, null));
   ok(noWhere.length <= 22, `almost every outing card says where to go (${outings.length - noWhere.length}/${outings.length})`);
@@ -51,6 +53,10 @@ const bday = (age) => { const d = new Date(); d.setFullYear(d.getFullYear() - ag
   ok(badMap.length === 0, "every map override points at a real idea" + (badMap.length ? ": " + badMap.join(", ") : ""));
   const titleSearch = all.filter((i) => i.y && i.tr >= 1 && !Shop.MAP_Q[i.id] && !Shop.BOOK[i.id] && !Spots.kindFor(i) && !Shop.NO_MAP.has(i.id));
   ok(titleSearch.length === 0, "no new 16-25 card searches the map for its own title" + (titleSearch.length ? ": " + titleSearch.map((i) => i.t).join(", ") : ""));
+  const con = Shop.nearby(all.find((i) => i.id === "comic-con-or-cosplay-day"), { label: "Salt Lake City, UT" });
+  ok(con.event && con.url === "https://www.google.com/search?q=comic%20con%20Salt%20Lake%20City%2C%20UT", "comic con links to a search for the event, not the convention center on a map");
+  const badEv = Object.keys(Shop.EVENTS).filter((id) => !ids.has(id));
+  ok(badEv.length === 0, "every event link points at a real idea" + (badEv.length ? ": " + badEv.join(", ") : ""));
   const kitLink = Shop.linksFor({ id: "tie-dye-shirts" }, null)[0];
   ok(kitLink && kitLink.url.startsWith("https://www.amazon.com/s?k=tie+dye+kit"), "tie-dye card links to an Amazon search for a tie dye kit");
 
