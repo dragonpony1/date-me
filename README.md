@@ -28,7 +28,7 @@ Swipe right on date ideas, not people. A phone-first web app with no server and 
 
 ## How the quiz works
 
-You answer once about yourself (including your date budget). For each person you date, you either answer for them or send them the quiz: they answer about themselves on their phone and send a link back, which loads their answers. Ideas are scored for both of you (shared interests count most, foods either won't eat are hidden, age rules use the younger person).
+You answer once about yourself (including your date budget). For each person you date, you either answer for them or send them the quiz: they answer about themselves on their phone, and their answers land in the worker's mailbox (`/answers`, keyed by a 32-character secret code in the invite, deleted on pickup or after 30 days). Your app collects them whenever it opens or comes back to the front, so it works even when an iPhone home-screen app and Safari don't share storage. A reply link and People → Paste their answers remain as backups. Ideas are scored for both of you (shared interests count most, foods either won't eat are hidden, age rules use the younger person).
 
 ## AI planner
 

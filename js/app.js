@@ -303,10 +303,12 @@
 
   async function sendQuiz(pid, toName) {
     const me = Store.me();
-    const url = Invite.inviteUrl(pid, me ? me.name : "", toName);
+    const p = Store.get(pid);
+    const tok = (p && p.inviteToken) || Invite.newToken(); // resending reuses the code, so older links still work
+    const url = Invite.inviteUrl(pid, me ? me.name : "", toName, tok);
     const from = me && me.name ? `${me.name} here! ` : "";
     await shareText(`Hey ${toName}! ${from}💘 I want to plan dates you'll actually love. Can you answer 9 quick questions about yourself? Takes a minute:\n${url}`);
-    Store.markInvited(pid);
+    Store.markInvited(pid, tok);
   }
 
   async function whoSend() {
@@ -330,18 +332,37 @@
     show("invite");
   }
 
-  function showSent(answers) {
+  // Their side, done answering: drop the answers in the mailbox; the reply link is the backup.
+  async function showSent(answers) {
     S.selfAnswers = answers;
     const inv = S.invite || { from: "them" };
-    $("#sent-title").textContent = `All done, ${answers.name}! 🎉`;
-    $("#sent-sub").textContent = `Now send your answers back to ${inv.from} so they can start planning.`;
-    $("#sent-send").textContent = `💌 Send to ${inv.from}`;
+    const manual = () => {
+      $("#sent-title").textContent = `All done, ${answers.name}! 🎉`;
+      $("#sent-sub").textContent = `Now send your answers back to ${inv.from} so they can start planning.`;
+      $("#sent-send").textContent = `💌 Send to ${inv.from}`;
+      $("#sent-send").hidden = false;
+      $("#sent-copy").textContent = "Copy the link instead";
+    };
     $("#sent-own").hidden = false;
+    if (!inv.token) { manual(); show("sent"); return; }
+    $("#sent-title").textContent = `Sending to ${inv.from}…`;
+    $("#sent-sub").textContent = "One sec.";
+    $("#sent-send").hidden = true;
+    $("#sent-copy").hidden = true;
     show("sent");
+    const ok = await Invite.mailbox.drop(inv.token, answers, inv.pid);
+    $("#sent-copy").hidden = false;
+    if (ok) {
+      $("#sent-title").textContent = `Sent to ${inv.from}! 🎉`;
+      $("#sent-sub").textContent = `${inv.from} will see your answers the next time they open Date Me. You're all set.`;
+      $("#sent-copy").textContent = `Text ${inv.from} a link too (optional)`;
+    } else {
+      manual();
+    }
   }
 
   function sentUrl() {
-    return Invite.answersUrl(S.selfAnswers, S.invite ? S.invite.pid : "");
+    return Invite.answersUrl(S.selfAnswers, S.invite ? S.invite.pid : "", S.invite ? S.invite.token : "");
   }
 
   async function sentSend() {
@@ -374,8 +395,9 @@
   }
 
   function importGo() {
-    const { pid, answers } = S.importing;
+    const { pid, answers, token } = S.importing;
     S.importing = null;
+    Invite.mailbox.clear(token);
     let p = pid && Store.get(pid);
     if (p) {
       Store.updateAnswers(p.id, answers, "them");
@@ -389,6 +411,32 @@
     else if (!p.place) startLocation(p.id);
     else showMain("discover");
   }
+
+  // Your side: collect answers from anyone we sent the quiz to. Runs on open, when the
+  // app comes back to the front, and every 20 seconds while someone is still pending.
+  let checking = false;
+  async function checkMailbox() {
+    if (checking || document.visibilityState === "hidden") return;
+    const waiting = Store.awaiting();
+    if (!waiting.length) return;
+    checking = true;
+    try {
+      for (const p of waiting) {
+        const got = await Invite.mailbox.collect(p.inviteToken);
+        if (!got) continue;
+        Store.updateAnswers(p.id, got.answers, "them");
+        Invite.mailbox.clear(p.inviteToken);
+        toast(`✨ ${got.answers.name} answered! Ideas now fit you both`);
+        if (Store.active() && Store.active().id === p.id) {
+          resetDeck();
+          if (!$("#screen-main").hidden) { rebuildDeck(); renderStatus(); }
+        }
+        if (!$("#screen-main").hidden && S.tab === "people") renderPeople();
+      }
+    } finally { checking = false; }
+  }
+  document.addEventListener("visibilitychange", checkMailbox);
+  setInterval(checkMailbox, 20000);
 
   function pasteAnswers() {
     const text = prompt("Paste the link they sent you:");
@@ -1260,4 +1308,5 @@
     else if (Store.me()) showWho();
     else show("welcome");
   }
+  checkMailbox();
 })();

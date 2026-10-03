@@ -81,7 +81,15 @@
       p.answeredBy = by;
       save();
     },
-    markInvited(id) { const p = state.profiles[id]; if (p) { p.invitedAt = Date.now(); save(); } },
+    markInvited(id, token) {
+      const p = state.profiles[id];
+      if (!p) return;
+      p.invitedAt = Date.now();
+      if (token) p.inviteToken = token;
+      save();
+    },
+    // Someone we sent the quiz to and haven't heard back from (mailbox keeps answers 30 days).
+    awaiting: () => Object.values(state.profiles).filter((p) => p.inviteToken && p.answeredBy !== "them" && Date.now() - (p.invitedAt || 0) < 31 * 864e5),
 
     setPlace(id, place) { const p = state.profiles[id]; if (p) { p.place = place; save(); } },
     setFilters(id, filters) { const p = state.profiles[id]; if (p) { p.filters = filters; save(); } },

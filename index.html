@@ -65,7 +65,7 @@
         <div id="who-send" hidden>
           <input id="who-name-input" class="field" type="text" maxlength="24" placeholder="Their first name" autocomplete="off" enterkeyhint="send">
           <button class="btn-white" data-act="who-send">💌 Send the quiz</button>
-          <p class="fine">You'll pick how to send it: text, Instagram, anything. When they answer, they'll send you a link back.</p>
+          <p class="fine">You'll pick how to send it: text, Instagram, anything. When they're done, their answers show up in your app on their own.</p>
         </div>
       </div>
     </section>
@@ -89,7 +89,7 @@
         <h2 class="q-title center" id="sent-title"></h2>
         <p class="tagline small" id="sent-sub"></p>
         <button class="btn-white" id="sent-send" data-act="sent-send">💌 Send it back</button>
-        <button class="btn-ghost" data-act="sent-copy">Copy the link instead</button>
+        <button class="btn-ghost" id="sent-copy" data-act="sent-copy">Copy the link instead</button>
         <div id="sent-own" class="sent-own">
           <p class="fine">Want to plan dates too?</p>
           <button class="btn-link light" data-act="sent-own">Make my own Date Me →</button>
@@ -105,7 +105,7 @@
         <p class="tagline small" id="import-sub"></p>
         <button class="btn-white" data-act="import-go">Add to Date Me</button>
         <p class="fine" id="import-note"></p>
-        <p class="fine">Using Date Me from your home screen? If this opened in your browser instead, copy their link, open the app, and tap People → 📥 Paste their answers.</p>
+        <p class="fine">Answers usually show up in your app on their own. This link is the backup: if it opened in your browser instead of your home-screen app, open the app and they should already be there (or use People → 📥 Paste their answers).</p>
         <button class="btn-link light" data-act="import-cancel">Not now</button>
       </div>
     </section>

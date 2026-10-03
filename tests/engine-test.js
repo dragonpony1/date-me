@@ -51,7 +51,7 @@ const bday = (age) => { const d = new Date(); d.setFullYear(d.getFullYear() - ag
 
   // Quiz links: what goes out comes back intact, and junk is rejected.
   ctx.location = { origin: "https://dragonpony1.github.io", pathname: "/date-me/" };
-  Object.assign(ctx, { btoa, atob, TextEncoder, TextDecoder });
+  Object.assign(ctx, { btoa, atob, TextEncoder, TextDecoder, crypto: globalThis.crypto });
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../js/invite.js"), "utf8"), ctx);
   const { Invite } = ctx.DateMe;
   const inv = Invite.parse(Invite.inviteUrl("pid123", "Matt", "Riley"));
@@ -62,6 +62,11 @@ const bday = (age) => { const d = new Date(); d.setFullYear(d.getFullYear() - ag
   ok(back && back.type === "answers" && back.answers.age === 19 && back.answers.interests.join() === "musical,animals" && back.answers.love === "touch", "answers link round-trips (found inside pasted text too)");
   ok(!ansUrl.includes(theirs.birthdate.slice(0, 4)) && back.answers.birthdate === undefined, "answers link carries age, never the birthday");
   ok(Invite.parse("https://x/#answers=not-real-data") === null, "a broken link is rejected, not half-loaded");
+  const tok = Invite.newToken();
+  ok(/^[a-f0-9]{32}$/.test(tok) && tok !== Invite.newToken(), "each invite gets its own unguessable 32-character code");
+  const invT = Invite.parse(Invite.inviteUrl("pid9", "Matt", "Riley", tok));
+  ok(invT.token === tok, "the invite link carries the mailbox code");
+  ok(Invite.parse(Invite.inviteUrl("pid9", "Matt", "Riley", "not-a-token")).token === "", "a bad mailbox code is ignored");
   const both = Engine.score(all.find((i) => i.id === "zoo-day"), Engine.buildContext({ id: "x", answers: { ...base, interests: ["animals"], birthdate: bday(20) }, place: null, saved: [], skipped: [], filters: null }, { me: { ...base, interests: ["animals"], birthdate: bday(25) } }));
   ok(both.why.includes("you both love animals"), "a shared interest shows as 'you both love animals'");
   const ageCtx = Engine.buildContext({ id: "x", answers: { ...base, birthdate: bday(22) }, place: null, saved: [], skipped: [] }, { me: { ...base, birthdate: bday(19) } });
