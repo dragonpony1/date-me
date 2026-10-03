@@ -1,0 +1,41 @@
+<!doctype html>
+<!-- Test fixture: loads a sample profile, then shows the app at phone size.
+     ?view=deck | saved | spin | filters | people | idea | interests | welcome
+     Overwrites this browser's Date Me data, so only use it on a test browser. -->
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>html,body{margin:0}iframe{border:0;position:fixed;left:0;top:0;width:375px;height:812px}</style></head>
+<body>
+<script>
+  const view = new URLSearchParams(location.search).get("view") || "deck";
+  const snap = (id, t, e, cat, d, c, m, io) => ({ id, at: Date.now(), idea: { id, t, e, cat, d, c, m, io, place: null } });
+  const profile = {
+    id: "test1", name: "Jordan", createdAt: Date.now(),
+    answers: { name: "Jordan", birthdate: "2006-05-14", outdoorsy: 8, outAbout: 5, adventure: 6, active: 5, crowds: 4,
+      budget: 2, foodie: 9, dislikes: ["seafood"], interests: ["artsy", "outdoorsy"], love: "time" },
+    place: { label: "Salt Lake City, UT", lat: 40.76, lon: -111.89, cc: "US", isCity: true, scanned: true,
+      features: { lake: true, coast: false, beach: false, mountains: true, trails: true, river: true, hotspring: true, ski: true, city: true, snow: false },
+      weather: { temp: 58, unit: "°F", emoji: "☀️", text: "Clear", tmaxC: 16, rainy: false, snowing: false, hot: false, cold: false, nice: true, elevation: 1300, at: Date.now() } },
+    saved: [
+      snap("glow-bowling", "Glow bowling", "🎳", "active", "Blacklights, loud music, and a bet riding on the last frame.", 1, 90, "in"),
+      snap("hot-springs-soak", "Hot springs soak", "♨️", "outdoors", "Find a natural hot spring and soak while it's chilly outside.", 1, 240, "out"),
+      snap("paint-pottery", "Paint pottery", "🏺", "culture", "Paint mugs at a pottery studio, pick them up next week, think of each other.", 2, 120, "in"),
+      snap("pumpkin-patch", "Pumpkin patch", "🎃", "seasonal", "Find the biggest, weirdest pumpkin in the field.", 1, 120, "out"),
+    ],
+    skipped: [], filters: { budget: 2, io: "any", time: "any", dist: 3 },
+  };
+  if (view === "welcome") localStorage.removeItem("dateme:v1");
+  else localStorage.setItem("dateme:v1", JSON.stringify({ version: 1, activeId: "test1", profiles: { test1: profile } }));
+</script>
+<iframe id="f" src="../index.html"></iframe>
+<script>
+  const f = document.getElementById("f");
+  f.onload = () => setTimeout(() => {
+    const d = f.contentDocument, click = (s) => d.querySelector(s).click();
+    if (view === "saved") click('.tabbar [data-tab="saved"]');
+    if (view === "people") click('.tabbar [data-tab="people"]');
+    if (view === "filters") click('[data-act="open-filters"]');
+    if (view === "idea") { click('.tabbar [data-tab="saved"]'); setTimeout(() => click(".s-item"), 100); }
+    if (view === "interests") { click('[data-act="tab"][data-tab="people"]'); click('[data-act="edit"]'); for (let k = 0; k < 8; k++) click("#quiz-next"); }
+    if (view === "spin") { click('[data-act="open-spin"]'); setTimeout(() => click("#spin-btn"), 100); }
+  }, 600);
+</script>
+</body></html>

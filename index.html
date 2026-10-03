@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Date Me</title>
+  <meta name="description" content="Swipe right on date ideas, not people.">
+  <meta name="theme-color" content="#ff2e7e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Date Me">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- Welcome -->
+    <section id="screen-welcome" class="screen grad" hidden>
+      <div class="welcome">
+        <div class="hero-cards" aria-hidden="true">
+          <div class="mini c1"><span>🎳</span><b>Glow bowling</b></div>
+          <div class="mini c2"><span>🌄</span><b>Sunrise hike</b></div>
+          <div class="mini c3"><span>🍣</span><b>Sushi night</b></div>
+        </div>
+        <h1 class="logo big"><svg class="heart" viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.3 3 4.5 6.7 4.5c2.1 0 3.6 1.1 5.3 3 1.7-1.9 3.2-3 5.3-3 3.7 0 5.8 3.8 4.3 7.2C19.5 16.4 12 21 12 21z"/></svg>date me</h1>
+        <p class="tagline">Swipe right on date ideas,<br>not people.</p>
+        <button class="btn-white" data-act="start-quiz">Find a date idea</button>
+        <p class="fine">10 quick questions about who you're dating. Saved only on this phone.</p>
+      </div>
+    </section>
+
+    <!-- Quiz -->
+    <section id="screen-quiz" class="screen grad" hidden>
+      <header class="quiz-top">
+        <button class="icon-btn light" data-act="quiz-back" aria-label="Back">‹</button>
+        <div class="progress"><i id="quiz-bar"></i></div>
+        <span id="quiz-count" class="quiz-count"></span>
+      </header>
+      <div id="quiz-body" class="quiz-body"></div>
+      <footer class="quiz-foot">
+        <button id="quiz-next" class="btn-white" data-act="quiz-next">Next</button>
+      </footer>
+    </section>
+
+    <!-- Location -->
+    <section id="screen-location" class="screen grad" hidden>
+      <header class="quiz-top">
+        <button class="icon-btn light" data-act="loc-back" aria-label="Back">‹</button>
+        <div class="progress"><i style="width:100%"></i></div>
+        <span class="quiz-count">📍</span>
+      </header>
+      <div class="quiz-body">
+        <div class="q-emoji">🗺️</div>
+        <h2 class="q-title">Where are you two?</h2>
+        <p class="q-sub">We'll tailor ideas to your area: lakes, hikes, downtown, the season and the weather.</p>
+        <form id="loc-form" class="loc-form" autocomplete="off">
+          <input id="loc-input" class="field" type="text" inputmode="search" placeholder="City or zip code" aria-label="City or zip code">
+          <button class="btn-white small" type="submit">Search</button>
+        </form>
+        <button class="btn-ghost" data-act="use-gps">📍 Use my location</button>
+        <div id="loc-result" class="loc-result" hidden></div>
+      </div>
+      <footer class="quiz-foot">
+        <button id="loc-go" class="btn-white" data-act="loc-go" hidden>Show me ideas →</button>
+        <button class="btn-link light" data-act="loc-skip" id="loc-skip">Skip for now</button>
+      </footer>
+    </section>
+
+    <!-- Main app -->
+    <section id="screen-main" class="screen main" hidden>
+      <header class="topbar">
+        <div class="logo"><svg class="heart" viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.3 3 4.5 6.7 4.5c2.1 0 3.6 1.1 5.3 3 1.7-1.9 3.2-3 5.3-3 3.7 0 5.8 3.8 4.3 7.2C19.5 16.4 12 21 12 21z"/></svg>date me</div>
+        <button class="who-chip" data-act="tab" data-tab="people"><span id="who-name"></span> ▾</button>
+        <button class="icon-btn filter-btn" data-act="open-filters" aria-label="Filters">
+          <svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4" stroke-width="2.4" stroke-linecap="round"/></svg>
+          <i id="filter-dot" hidden></i>
+        </button>
+      </header>
+
+      <div id="tab-discover" class="tab">
+        <div id="status-row" class="status-row"></div>
+        <div id="deck" class="deck"></div>
+        <div class="actions" id="deck-actions">
+          <button class="act undo" data-act="undo" aria-label="Undo">↺</button>
+          <button class="act nope" data-act="nope" aria-label="Skip">✕</button>
+          <button class="act like" data-act="like" aria-label="Save">♥</button>
+          <button class="act spin" data-act="open-spin" aria-label="Spin it">🎲</button>
+        </div>
+      </div>
+
+      <div id="tab-saved" class="tab" hidden>
+        <div class="saved-head">
+          <h2>Saved ideas</h2>
+          <button class="btn-grad" data-act="open-spin">🎲 Spin it</button>
+        </div>
+        <div id="saved-list" class="saved-list"></div>
+      </div>
+
+      <div id="tab-people" class="tab" hidden>
+        <div class="saved-head"><h2>Who are you planning for?</h2></div>
+        <div id="people-list" class="people-list"></div>
+        <button class="btn-outline" data-act="new-person">＋ Plan for someone new</button>
+        <button class="btn-outline" data-act="share-app">💌 Share Date Me with a friend</button>
+        <p class="fine dark">Everything stays on this phone. Nothing is sent anywhere except the city you search for.</p>
+      </div>
+
+      <nav class="tabbar">
+        <button data-act="tab" data-tab="discover" class="on"><span>🔥</span>Discover</button>
+        <button data-act="tab" data-tab="saved"><span>♥</span>Saved<b id="saved-count" hidden></b></button>
+        <button data-act="tab" data-tab="people"><span>👥</span>People</button>
+      </nav>
+    </section>
+
+    <!-- Filters sheet -->
+    <div id="sheet-filters" class="overlay" hidden>
+      <div class="sheet" role="dialog" aria-label="Filters">
+        <div class="grabber"></div>
+        <h3>Filters</h3>
+        <div class="f-group"><label>Budget (up to)</label><div class="chips" data-filter="budget"></div></div>
+        <div class="f-group"><label>Indoor or outdoor</label><div class="chips" data-filter="io"></div></div>
+        <div class="f-group"><label>Time of day</label><div class="chips" data-filter="time"></div></div>
+        <div class="f-group"><label>How far will you go?</label><div class="chips" data-filter="dist"></div></div>
+        <div class="sheet-btns">
+          <button class="btn-link" data-act="reset-filters">Reset</button>
+          <button class="btn-grad wide" data-act="apply-filters" id="apply-filters">Show ideas</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Spin -->
+    <div id="modal-spin" class="overlay center" hidden>
+      <div class="spin-box">
+        <button class="icon-btn close" data-act="close-spin" aria-label="Close">✕</button>
+        <h3>Spin it 🎲</h3>
+        <p class="spin-sub" id="spin-sub">Can't decide? Let fate pick from your saved ideas.</p>
+        <div class="reel"><div class="reel-track" id="reel-track"></div><div class="reel-window"></div></div>
+        <div id="spin-result" class="spin-result" hidden></div>
+        <div class="spin-btns">
+          <button class="btn-grad wide" data-act="spin" id="spin-btn">Spin!</button>
+          <button class="btn-outline" data-act="share-winner" id="share-winner" hidden>💌 Send it to them</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Idea detail -->
+    <div id="modal-idea" class="overlay center" hidden>
+      <div class="idea-box" id="idea-box"></div>
+    </div>
+
+    <div id="confetti" aria-hidden="true"></div>
+    <div id="toast" role="status"></div>
+  </div>
+
+  <script src="js/store.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/location.js"></script>
+  <script src="js/ideas.js"></script>
+  <!-- Future idea sources go here, e.g. <script src="js/sources/places.js"></script> -->
+  <script src="js/app.js"></script>
+</body>
+</html>
