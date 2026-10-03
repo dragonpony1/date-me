@@ -1167,8 +1167,105 @@
   }
 
   function shareApp() {
-    shareText(`Date Me 💘 Swipe right on date ideas, not people.\n${appUrl()}\n\nOpen it on your phone, then Share → Add to Home Screen so it opens like an app.`);
+    shareText(`Date Me 💘 Swipe right on date ideas, not people. It plans dates you'll both love.\n${appUrl()}\n\nOpen it on your phone, then Share → Add to Home Screen so it opens like an app.`);
   }
+
+  // ---------- share screen: QR, link, send to a friend, add to home screen ----------
+  let installPrompt = null; // Android's one-tap install, if the browser offers it
+  window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installPrompt = e; });
+  const isInstalled = () => window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+  function openShare() {
+    $("#share-url").textContent = appUrl().replace(/^https?:\/\//, "");
+    const box = $("#install-box");
+    if (isInstalled()) box.innerHTML = `<p class="install-ok">✓ You're using the home-screen app</p>`;
+    else if (installPrompt) box.innerHTML = `<button class="btn-outline" data-act="install">📲 Add to my home screen</button>`;
+    else if (isIOS()) box.innerHTML = `<p class="install-how"><b>📲 Put it on your home screen:</b> tap <b>Share</b> <span class="ios-share">⬆︎</span> at the bottom of Safari, then <b>Add to Home Screen</b>.</p>`;
+    else box.innerHTML = `<p class="install-how"><b>📲 Put it on your home screen:</b> open your browser's menu <b>⋮</b>, then <b>Add to Home screen</b>.</p>`;
+    $("#modal-share").hidden = false;
+  }
+
+  async function installApp() {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    try { await installPrompt.userChoice; } catch (e) { /* closed */ }
+    installPrompt = null;
+    openShare();
+  }
+
+  // A button that says "Copied!" for a moment. Remembers its real label once,
+  // so a second tap during the flash doesn't make "Copied!" stick.
+  const flashTimers = new WeakMap();
+  function flash(btn, text) {
+    if (!btn.dataset.label) btn.dataset.label = btn.textContent;
+    btn.textContent = text;
+    clearTimeout(flashTimers.get(btn));
+    flashTimers.set(btn, setTimeout(() => { btn.textContent = btn.dataset.label; }, 1600));
+  }
+
+  async function copyLink(btn) {
+    try { await navigator.clipboard.writeText(appUrl()); flash(btn, "Copied!"); }
+    catch (e) { prompt("Copy this link:", appUrl()); }
+  }
+
+  // ======================================================================
+  //  UPDATES — compare our version with the live js/version.js
+  // ======================================================================
+  const VERSION = window.DateMe.VERSION || "?";
+  let newVersion = null, ribbonDismissed = false, lastCheck = 0;
+
+  const newer = (a, b) => {
+    const x = String(a).split(".").map(Number), y = String(b).split(".").map(Number);
+    for (let i = 0; i < Math.max(x.length, y.length); i++) {
+      if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0);
+    }
+    return false;
+  };
+
+  async function liveVersion() {
+    try {
+      const r = await fetch(`js/version.js?ts=${Date.now()}`, { cache: "no-store" });
+      const m = (await r.text()).match(/VERSION\s*=\s*"([^"]+)"/);
+      return m ? m[1] : null;
+    } catch (e) { return null; }
+  }
+
+  async function checkUpdate(manual) {
+    if (!manual && (document.visibilityState === "hidden" || Date.now() - lastCheck < 60000)) return;
+    lastCheck = Date.now();
+    const v = await liveVersion();
+    if (v && newer(v, VERSION)) {
+      newVersion = v;
+      if (manual || !ribbonDismissed) $("#update-ribbon").hidden = false;
+      if (manual) toast(`Version ${v} is ready. Tap Update at the top`);
+    } else if (manual) {
+      toast(v ? `You're up to date (v${VERSION}) ✓` : "Couldn't check right now. Try again in a bit");
+    }
+  }
+
+  // Refresh every file in the browser's cache, then reload, so the new version loads in one tap.
+  async function doUpdate(btn) {
+    if (btn) btn.textContent = "Updating…";
+    const files = [...new Set(["./", "index.html", "css/style.css", "manifest.json", "qr.png",
+      ...$$("script[src]").map((s) => s.getAttribute("src")).filter((src) => !/^https?:/.test(src))])];
+    await Promise.all(files.map((f) => fetch(f, { cache: "reload" }).catch(() => {})));
+    try { localStorage.setItem("dateme:updatedFrom", VERSION); } catch (e) { /* fine */ }
+    location.reload();
+  }
+
+  function showVersion() {
+    $("#ver-top").textContent = `v${VERSION}`;
+    $("#ver-people").textContent = `Date Me v${VERSION}`;
+    $("#ver-share").textContent = `Date Me v${VERSION}`;
+    let from = null;
+    try { from = localStorage.getItem("dateme:updatedFrom"); localStorage.removeItem("dateme:updatedFrom"); } catch (e) { /* fine */ }
+    if (from && from !== VERSION) setTimeout(() => toast(`✨ Updated to v${VERSION}`), 600);
+  }
+
+  document.addEventListener("visibilitychange", () => checkUpdate(false));
+  setInterval(() => checkUpdate(false), 5 * 60 * 1000);
+  setTimeout(() => checkUpdate(false), 4000);
 
   // ======================================================================
   //  SHELL
@@ -1266,6 +1363,13 @@
         break;
       case "share-idea": shareIdea(id); break;
       case "share-app": shareApp(); break;
+      case "open-share": openShare(); break;
+      case "close-share": $("#modal-share").hidden = true; break;
+      case "copy-link": copyLink(el); break;
+      case "install": installApp(); break;
+      case "check-update": checkUpdate(true); break;
+      case "do-update": doUpdate(el); break;
+      case "dismiss-update": ribbonDismissed = true; $("#update-ribbon").hidden = true; break;
       case "new-person": showWho(); break;
       case "switch": Store.setActive(id); resetDeck(); showMain("discover"); break;
       case "edit": startQuiz({ mode: "them", editId: id }); break;
@@ -1301,6 +1405,7 @@
 
   // ---------- boot ----------
   Store.load();
+  showVersion();
   window.addEventListener("hashchange", handleHash);
   if (!handleHash()) {
     if (Store.active() && !Store.me()) show("meintro");      // older profiles: ask about "you" once

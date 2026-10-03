@@ -360,6 +360,39 @@ input[type="range"].slider::-moz-range-thumb { width: 40px; height: 40px; border
 .idea-btns button { flex: 1; }
 .idea-btns .btn-outline { margin-top: 0; flex: 0 0 auto; width: auto; padding: 0 20px; }
 
+/* version, share, updates */
+.ver { font-size: 11px; font-weight: 700; margin-left: 3px; -webkit-text-fill-color: var(--ink-2); color: var(--ink-2); letter-spacing: 0; vertical-align: super; }
+.top-btn { background: var(--surface); border: 1.5px solid var(--line); font-size: 20px; flex: none; }
+.ver-line { margin-top: 14px; padding-bottom: 0 !important; font-weight: 700; }
+.ribbon { position: absolute; left: 10px; right: 10px; top: calc(8px + var(--top)); z-index: 75; display: flex; align-items: center; gap: 8px;
+  background: #231320; color: #fff; border-radius: 18px; padding: 8px 8px 8px 14px; box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  font-weight: 700; font-size: 14px; animation: ribbonIn .4s cubic-bezier(.2,.9,.3,1.2); }
+.ribbon span { flex: 1; }
+@keyframes ribbonIn { from { transform: translateY(-120%); opacity: 0; } }
+.ribbon-go { background: var(--grad); color: #fff; font-weight: 800; padding: 9px 14px; border-radius: 99px; }
+.ribbon-x { width: 32px; height: 32px; border-radius: 50%; color: #c9b2c0; }
+.share-box { position: relative; width: 100%; max-width: 380px; background: var(--surface); border-radius: 28px; padding: 22px 18px 14px; text-align: center;
+  box-shadow: 0 30px 80px rgba(0,0,0,.35); animation: pop .3s cubic-bezier(.2,.9,.3,1.2); max-height: 94%; overflow-y: auto; }
+.share-box h3 { margin: 0; font-size: 26px; }
+.qr { display: block; width: 200px; height: 200px; margin: 0 auto 14px; border-radius: 16px; border: 6px solid #fff; box-shadow: 0 4px 16px rgba(0,0,0,.12); image-rendering: pixelated; }
+.share-link { display: flex; align-items: center; gap: 8px; background: var(--surface-2); border-radius: 14px; padding: 6px 6px 6px 12px; margin-bottom: 12px; font-weight: 700; font-size: 14px; }
+.share-link span { flex: 1; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.share-link button { background: var(--surface); border: 1.5px solid var(--line); border-radius: 99px; padding: 8px 14px; font-weight: 800; color: var(--pink); min-width: 84px; }
+.share-box .btn-grad.wide { width: 100%; }
+.install-box { margin-top: 12px; }
+.install-box .btn-outline { margin-top: 0; }
+.install-how { font-size: 14px; line-height: 1.45; color: var(--ink-2); margin: 4px 0 0; }
+.install-how b { color: var(--ink); }
+.ios-share { display: inline-block; border: 1.5px solid currentColor; border-radius: 5px; padding: 0 4px; font-size: 12px; }
+.install-ok { color: #18a874; font-weight: 700; margin: 4px 0 0; }
+.share-foot { margin-top: 12px; font-size: 13px; color: var(--ink-2); font-weight: 600; }
+.btn-link.tiny { padding: 4px; font-size: 13px; color: var(--pink); }
+.who-chip { max-width: 34vw; min-width: 0; }
+.topbar { gap: 8px; }
+.topbar .logo { white-space: nowrap; font-size: 22px; flex: none; }
+.topbar .logo .heart { width: 22px; height: 22px; }
+.topbar .icon-btn { width: 42px; height: 42px; flex: none; }
+
 /* toast + confetti */
 #toast { position: absolute; left: 50%; bottom: calc(90px + var(--bottom)); transform: translate(-50%, 20px); background: #231320; color: #fff; padding: 12px 18px; border-radius: 99px; font-weight: 600; font-size: 15px; opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; z-index: 80; white-space: nowrap; display: flex; align-items: center; gap: 12px; }
 #toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }

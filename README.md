@@ -38,6 +38,10 @@ The ✨ button calls a Cloudflare Worker (`../date-me-ai`, live at date-me-ai.52
 
 Register another source in its own file and add a `<script>` tag after `ideas.js`. The format is documented at the top of `js/engine.js`. Any idea that carries a `place: { name, url }` shows a 📍 link on its card. If a source fails or times out, the others keep working.
 
+## Versions and updates
+
+`js/version.js` holds the version (shown as "v1.6" by the logo). **Bump it on every release.** Open apps check the live `js/version.js` on open, when they come back to the front, and every 5 minutes; if it's newer they show a "New version ready · Update" ribbon. Update re-fetches every file with `cache: "reload"` and reloads, then says "Updated to vX". People → Check for updates does the same on demand.
+
 ## Deploying
 
 Push the folder to a GitHub repo and turn on Pages (main branch, root). There's nothing to build.

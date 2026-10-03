@@ -150,8 +150,9 @@
     <!-- Main app -->
     <section id="screen-main" class="screen main" hidden>
       <header class="topbar">
-        <div class="logo"><svg class="heart" viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.3 3 4.5 6.7 4.5c2.1 0 3.6 1.1 5.3 3 1.7-1.9 3.2-3 5.3-3 3.7 0 5.8 3.8 4.3 7.2C19.5 16.4 12 21 12 21z"/></svg>date me</div>
+        <div class="logo"><svg class="heart" viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.3 3 4.5 6.7 4.5c2.1 0 3.6 1.1 5.3 3 1.7-1.9 3.2-3 5.3-3 3.7 0 5.8 3.8 4.3 7.2C19.5 16.4 12 21 12 21z"/></svg>date me<sup class="ver" id="ver-top"></sup></div>
         <button class="who-chip" data-act="tab" data-tab="people"><span id="who-name"></span> ▾</button>
+        <button class="icon-btn top-btn" data-act="open-share" aria-label="Share Date Me">💌</button>
         <button class="icon-btn filter-btn" data-act="open-filters" aria-label="Filters">
           <svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4" stroke-width="2.4" stroke-linecap="round"/></svg>
           <i id="filter-dot" hidden></i>
@@ -182,8 +183,10 @@
         <div id="people-list" class="people-list"></div>
         <button class="btn-outline" data-act="new-person">＋ Plan for someone new</button>
         <button class="btn-outline" data-act="paste-answers">📥 Paste their answers</button>
-        <button class="btn-outline" data-act="share-app">💌 Share Date Me with a friend</button>
-        <p class="fine dark">Everything stays on this phone. Nothing is sent anywhere except the city you search for, and quiz answers (never names) when you use the AI planner.</p>
+        <button class="btn-outline" data-act="open-share">💌 Share Date Me with a friend</button>
+        <button class="btn-outline" data-act="check-update">🔄 Check for updates</button>
+        <p class="fine dark ver-line" id="ver-people"></p>
+        <p class="fine dark">Your answers stay on this phone. What leaves it: the city you search for; quiz answers (never names) when you use the AI planner; and answers to a quiz you were sent, which wait in a private mailbox and are deleted once picked up.</p>
         <p class="fine dark">Some "Get the kit" and "Find tickets" links may earn Date Me a small commission, at no extra cost to you. As an Amazon Associate, Date Me earns from qualifying purchases.</p>
       </div>
 
@@ -193,6 +196,30 @@
         <button data-act="tab" data-tab="people"><span>👥</span>People</button>
       </nav>
     </section>
+
+    <!-- New version ribbon -->
+    <div id="update-ribbon" class="ribbon" role="status" hidden>
+      <span>✨ New version ready</span>
+      <button class="ribbon-go" data-act="do-update">Update</button>
+      <button class="ribbon-x" data-act="dismiss-update" aria-label="Later">✕</button>
+    </div>
+
+    <!-- Share Date Me -->
+    <div id="modal-share" class="overlay center" hidden>
+      <div class="share-box">
+        <button class="icon-btn close" data-act="close-share" aria-label="Close">✕</button>
+        <h3>Share Date Me 💘</h3>
+        <p class="spin-sub">Scan with a phone camera to open it.</p>
+        <img class="qr" src="qr.png" alt="QR code that opens Date Me" width="220" height="220">
+        <div class="share-link"><span id="share-url"></span><button data-act="copy-link" id="copy-link">Copy</button></div>
+        <button class="btn-grad wide" data-act="share-app">💌 Send to a friend</button>
+        <div id="install-box" class="install-box"></div>
+        <div class="share-foot">
+          <span id="ver-share"></span> ·
+          <button class="btn-link tiny" data-act="check-update">Check for updates</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Filters sheet -->
     <div id="sheet-filters" class="overlay" hidden>
@@ -268,6 +295,7 @@
     <div id="toast" role="status"></div>
   </div>
 
+  <script src="js/version.js"></script>
   <script src="js/store.js"></script>
   <script src="js/engine.js"></script>
   <script src="js/location.js"></script>
