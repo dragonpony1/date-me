@@ -1,8 +1,11 @@
 /* Date Me — everything saved on this phone (localStorage).
  *
  * Shape:
- *   { version: 1, activeId, profiles: { [id]: Profile } }
- *   Profile = { id, name, answers, place, saved: [{ id, at, idea }], skipped: [ideaId], filters, createdAt }
+ *   { version: 1, me: { answers, at }, activeId, profiles: { [id]: Profile } }
+ *   me      = the person using the app (their own quiz, including their date budget)
+ *   Profile = someone they're dating:
+ *             { id, name, answers (null while we wait for them), answeredBy: "me" | "them",
+ *               invitedAt, place, saved: [{ id, at, idea }], skipped: [ideaId], filters, aiIdeas, createdAt }
  *
  * Saved ideas keep a full copy of the idea, so an idea from a future places/AI
  * source (or one later removed from the library) still shows up in the list.
@@ -32,8 +35,11 @@
 
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
+  // The budget is the planner's own, so it comes from "me" (older profiles carried it themselves).
   function defaultFilters(answers) {
-    return { budget: answers && answers.budget != null ? answers.budget : 3, io: "any", time: "any", dist: 3 };
+    const mine = state.me && state.me.answers && state.me.answers.budget;
+    const budget = mine != null ? mine : answers && answers.budget != null ? answers.budget : 3;
+    return { budget, io: "any", time: "any", dist: 3 };
   }
 
   const Store = {
@@ -44,9 +50,21 @@
     active: () => state.profiles[state.activeId] || null,
     setActive(id) { if (state.profiles[id]) { state.activeId = id; save(); } },
 
-    create(answers) {
+    me: () => (state.me ? state.me.answers : null),
+    setMe(answers) {
+      const old = state.me && state.me.answers;
+      state.me = { answers, at: Date.now() };
+      if (!old || old.budget !== answers.budget) {
+        Object.values(state.profiles).forEach((p) => { if (answers.budget != null) p.filters.budget = answers.budget; });
+      }
+      save();
+    },
+
+    // answers may be null: someone we sent the quiz to and are waiting on.
+    create(answers, opts = {}) {
       const p = {
-        id: uid(), name: answers.name, answers, place: null,
+        id: opts.id || uid(), name: (answers && answers.name) || opts.name || "Them", answers,
+        answeredBy: answers ? opts.by || "me" : null, invitedAt: opts.invited ? Date.now() : null, place: null,
         saved: [], skipped: [], filters: defaultFilters(answers), createdAt: Date.now(),
       };
       state.profiles[p.id] = p;
@@ -55,15 +73,15 @@
       return p;
     },
 
-    updateAnswers(id, answers) {
+    updateAnswers(id, answers, by = "me") {
       const p = state.profiles[id];
       if (!p) return;
-      const budgetChanged = p.answers.budget !== answers.budget;
       p.answers = answers;
-      p.name = answers.name;
-      if (budgetChanged) p.filters.budget = answers.budget;
+      p.name = answers.name || p.name;
+      p.answeredBy = by;
       save();
     },
+    markInvited(id) { const p = state.profiles[id]; if (p) { p.invitedAt = Date.now(); save(); } },
 
     setPlace(id, place) { const p = state.profiles[id]; if (p) { p.place = place; save(); } },
     setFilters(id, filters) { const p = state.profiles[id]; if (p) { p.filters = filters; save(); } },
@@ -112,8 +130,8 @@
 
     // Only what the saved list needs to draw a card.
     snapshot(idea) {
-      const { id, t, e, cat, d, c, m, io, place, spot, kit } = idea;
-      return { id, t, e, cat, d, c, m, io, place: place || null, spot: spot || null, kit: kit || null };
+      const { id, t, e, cat, d, c, m, io, place, spot, kit, tr, source } = idea;
+      return { id, t, e, cat, d, c, m, io, tr: tr != null ? tr : 1, source: source || null, place: place || null, spot: spot || null, kit: kit || null };
     },
   };
 

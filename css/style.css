@@ -170,6 +170,15 @@ input[type="range"].slider::-moz-range-thumb { width: 40px; height: 40px; border
 .chip-l { min-height: 46px; padding: 0 16px; border-radius: 99px; background: rgba(255,255,255,.16); border: 2px solid rgba(255,255,255,.35); color: #fff; font-weight: 600; font-size: 16px; }
 .chip-l.on { background: #fff; color: var(--pink); border-color: #fff; text-decoration: line-through; text-decoration-thickness: 2px; }
 
+/* intro screens */
+.big-emoji { font-size: 84px; margin-bottom: 8px; }
+.q-title.center { text-align: center; }
+.tagline.small { font-size: 18px; margin: 6px 0 26px; }
+.sent-own { margin-top: 26px; }
+.who-choices { display: grid; gap: 12px; }
+.tile.big { min-height: 88px; }
+#who-send .field { margin-bottom: 14px; }
+
 /* location */
 .loc-form { display: flex; gap: 10px; }
 .loc-result { margin-top: 22px; background: rgba(255,255,255,.14); border-radius: 22px; padding: 18px; border: 2px solid rgba(255,255,255,.25); }
@@ -301,6 +310,10 @@ input[type="range"].slider::-moz-range-thumb { width: 40px; height: 40px; border
 .avatar { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 22px; color: #fff; background: var(--grad); flex: none; }
 .p-top b { font-size: 19px; }
 .p-top small { display: block; color: var(--ink-2); font-size: 14px; margin-top: 2px; }
+.p-card.me { background: linear-gradient(135deg, rgba(255,46,126,.08), rgba(255,160,77,.08)); }
+.avatar.me { background: linear-gradient(140deg, #8e6cf7, #ff5ca8); }
+.you-tag { font-size: 11px; font-weight: 800; color: #fff; background: #8e6cf7; padding: 2px 7px; border-radius: 99px; vertical-align: middle; margin-left: 4px; }
+.p-status { color: var(--pink) !important; font-weight: 700; }
 .tag-on { margin-left: auto; align-self: flex-start; font-size: 12px; font-weight: 800; color: var(--pink); background: rgba(255,46,126,.1); padding: 5px 9px; border-radius: 99px; white-space: nowrap; }
 .p-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .p-btns button { min-height: 40px; padding: 0 14px; border-radius: 99px; background: var(--surface-2); font-weight: 700; font-size: 14px; }

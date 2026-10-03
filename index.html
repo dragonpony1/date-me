@@ -31,8 +31,82 @@
         </div>
         <h1 class="logo big"><svg class="heart" viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.3 3 4.5 6.7 4.5c2.1 0 3.6 1.1 5.3 3 1.7-1.9 3.2-3 5.3-3 3.7 0 5.8 3.8 4.3 7.2C19.5 16.4 12 21 12 21z"/></svg>date me</h1>
         <p class="tagline">Swipe right on date ideas,<br>not people.</p>
-        <button class="btn-white" data-act="start-quiz">Find a date idea</button>
-        <p class="fine">10 quick questions about who you're dating. Saved only on this phone.</p>
+        <button class="btn-white" data-act="start-quiz">Let's go</button>
+        <p class="fine">A few quick questions about you, then about who you're dating (or send them the quiz). Saved only on this phone.</p>
+      </div>
+    </section>
+
+    <!-- Older profiles: ask about "you" once -->
+    <section id="screen-meintro" class="screen grad" hidden>
+      <div class="welcome">
+        <div class="big-emoji">💞</div>
+        <h2 class="q-title center">New: ideas you'll both love</h2>
+        <p class="tagline small">Answer 10 quick questions about <b>you</b>, and Date Me picks dates that fit you both.</p>
+        <button class="btn-white" data-act="meintro-go">Let's do it</button>
+        <button class="btn-link light" data-act="meintro-later">Later</button>
+      </div>
+    </section>
+
+    <!-- Who are you dating? -->
+    <section id="screen-who" class="screen grad" hidden>
+      <header class="quiz-top">
+        <button class="icon-btn light" id="who-back" data-act="who-back" aria-label="Back">‹</button>
+        <div class="progress"><i style="width:100%"></i></div>
+        <span class="quiz-count">💘</span>
+      </header>
+      <div class="quiz-body">
+        <div class="q-emoji">💑</div>
+        <h2 class="q-title">Now, who are you dating?</h2>
+        <p class="q-sub">Answer their questions yourself, or send them the quiz so they can answer for themselves.</p>
+        <div id="who-choices" class="who-choices">
+          <button class="tile big" data-act="who-send-open"><span class="te">💌</span><span><b>Send them the quiz</b><small>They answer on their phone. Most accurate.</small></span></button>
+          <button class="tile big" data-act="who-answer"><span class="te">✍️</span><span><b>I'll answer for them</b><small>Quick, and you can send it later too.</small></span></button>
+        </div>
+        <div id="who-send" hidden>
+          <input id="who-name-input" class="field" type="text" maxlength="24" placeholder="Their first name" autocomplete="off" enterkeyhint="send">
+          <button class="btn-white" data-act="who-send">💌 Send the quiz</button>
+          <p class="fine">You'll pick how to send it: text, Instagram, anything. When they answer, they'll send you a link back.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Someone sent you their quiz -->
+    <section id="screen-invite" class="screen grad" hidden>
+      <div class="welcome">
+        <div class="big-emoji">💌</div>
+        <h2 class="q-title center" id="invite-title"></h2>
+        <p class="tagline small" id="invite-sub"></p>
+        <button class="btn-white" data-act="invite-start">Let's go</button>
+        <p class="fine">Date Me is an app that suggests date ideas. Only your age is shared, never your birthday.</p>
+        <button class="btn-link light" data-act="invite-own">No thanks</button>
+      </div>
+    </section>
+
+    <!-- Done answering: send it back -->
+    <section id="screen-sent" class="screen grad" hidden>
+      <div class="welcome">
+        <div class="big-emoji">🎉</div>
+        <h2 class="q-title center" id="sent-title"></h2>
+        <p class="tagline small" id="sent-sub"></p>
+        <button class="btn-white" id="sent-send" data-act="sent-send">💌 Send it back</button>
+        <button class="btn-ghost" data-act="sent-copy">Copy the link instead</button>
+        <div id="sent-own" class="sent-own">
+          <p class="fine">Want to plan dates too?</p>
+          <button class="btn-link light" data-act="sent-own">Make my own Date Me →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Their answers came back -->
+    <section id="screen-import" class="screen grad" hidden>
+      <div class="welcome">
+        <div class="big-emoji">✨</div>
+        <h2 class="q-title center" id="import-title"></h2>
+        <p class="tagline small" id="import-sub"></p>
+        <button class="btn-white" data-act="import-go">Add to Date Me</button>
+        <p class="fine" id="import-note"></p>
+        <p class="fine">Using Date Me from your home screen? If this opened in your browser instead, copy their link, open the app, and tap People → 📥 Paste their answers.</p>
+        <button class="btn-link light" data-act="import-cancel">Not now</button>
       </div>
     </section>
 
@@ -107,9 +181,10 @@
         <div class="saved-head"><h2>Who are you planning for?</h2></div>
         <div id="people-list" class="people-list"></div>
         <button class="btn-outline" data-act="new-person">＋ Plan for someone new</button>
+        <button class="btn-outline" data-act="paste-answers">📥 Paste their answers</button>
         <button class="btn-outline" data-act="share-app">💌 Share Date Me with a friend</button>
         <p class="fine dark">Everything stays on this phone. Nothing is sent anywhere except the city you search for, and quiz answers (never names) when you use the AI planner.</p>
-        <p class="fine dark">Some "Get the kit", "Book it" and "Find tickets" links may earn Date Me a small commission, at no extra cost to you. As an Amazon Associate, Date Me earns from qualifying purchases.</p>
+        <p class="fine dark">Some "Get the kit" and "Find tickets" links may earn Date Me a small commission, at no extra cost to you. As an Amazon Associate, Date Me earns from qualifying purchases.</p>
       </div>
 
       <nav class="tabbar">
@@ -200,6 +275,7 @@
   <script src="js/ideas.js"></script>
   <script src="js/ai.js"></script>
   <script src="js/shop.js"></script>
+  <script src="js/invite.js"></script>
   <!-- More idea sources go here, e.g. <script src="js/sources/places.js"></script> -->
   <script src="js/app.js"></script>
 </body>

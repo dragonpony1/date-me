@@ -1,12 +1,15 @@
 /* Date Me — screens, quiz, swiping, spin. */
 (function () {
-  const { Store, Engine, Location, Spots, AI, Shop } = window.DateMe;
+  const { Store, Engine, Location, Spots, AI, Shop, Invite } = window.DateMe;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
   const S = {
-    quiz: null,        // { i, answers, editId, dir }
+    quiz: null,        // { mode, steps, i, answers, editId, pendingId, dir, ... }
+    invite: null,      // { pid, from, to } when someone sent us their quiz
+    selfAnswers: null, // what we answered about ourselves for that invite
+    importing: null,   // { pid, answers } from a link they sent back
     loc: null,         // { profileId, place, token }
     candidates: null,  // every idea from every source, normalized
     deck: [],          // ranked entries still to swipe
@@ -19,7 +22,10 @@
   };
 
   // ======================================================================
-  //  QUIZ
+  //  QUIZ — one quiz, three voices:
+  //    "me"   the planner, about themselves (asked once; includes their date budget)
+  //    "them" the planner, answering for the person they're dating
+  //    "self" the date, answering about themselves from an invite link
   // ======================================================================
   const SLIDER_FACES = {
     outdoorsy: ["🛋️", "🛋️", "📺", "🏡", "🙂", "🌳", "🌲", "🥾", "🏕️", "🏔️"],
@@ -29,20 +35,28 @@
     crowds: ["🤫", "📖", "🌙", "☕", "🙂", "🍿", "🎳", "🎤", "🎉", "🏟️"],
   };
 
+  // q / sub: { you, them } — "you" wording is used for both "me" and "self".
   const QUIZ = [
-    { key: "name", type: "text", emoji: "💘", q: "Who are you planning for?", sub: "Their first name or a nickname. It only lives on this phone." },
-    { key: "birthdate", type: "date", emoji: "🎂", q: "When's {name}'s birthday?", sub: "We use their age to keep ideas age-appropriate." },
-    { key: "outdoorsy", type: "slider", q: "How outdoorsy is {name}?", left: "Indoor kid", right: "Lives outside" },
-    { key: "outAbout", type: "slider", q: "Homebody or out-and-about?", left: "Homebody", right: "Out & about" },
-    { key: "adventure", type: "slider", q: "Chill or adventurous?", left: "Chill", right: "Adventurous" },
-    { key: "budget", type: "choice", grid: "two", emoji: "💸", q: "What's the budget?", sub: "You can always change this later in filters.",
+    { key: "name", type: "text", emoji: "💘",
+      q: { me: "First, what's your name?", them: "Who are you planning for?", self: "What's your name?" },
+      sub: { me: "Just your first name. It shows on quizzes you send.", them: "Their first name or a nickname. It only lives on this phone.", self: "So {from} knows it's you." } },
+    { key: "birthdate", type: "date", emoji: "🎂",
+      q: { you: "When's your birthday?", them: "When's {name}'s birthday?" },
+      sub: { me: "We keep ideas right for both your ages.", them: "We use their age to keep ideas age-appropriate.", self: "Only your age gets shared, never your birthday." } },
+    { key: "outdoorsy", type: "slider", q: { you: "How outdoorsy are you?", them: "How outdoorsy is {name}?" }, left: "Indoor kid", right: "Lives outside" },
+    { key: "outAbout", type: "slider", q: { you: "Are you a homebody or out-and-about?", them: "Is {name} a homebody or out-and-about?" }, left: "Homebody", right: "Out & about" },
+    { key: "adventure", type: "slider", q: { you: "Are you chill or adventurous?", them: "Is {name} chill or adventurous?" }, left: "Chill", right: "Adventurous" },
+    { key: "budget", type: "choice", grid: "two", emoji: "💸", only: ["me"],
+      q: { me: "What's your budget for dates?" }, sub: { me: "You can always change it later in filters." },
       options: [
         { v: 0, e: "🆓", label: "Free", sub: "$0, all creativity" },
         { v: 1, e: "💵", label: "$", sub: "Under $25" },
         { v: 2, e: "💳", label: "$$", sub: "$25 – $75" },
         { v: 3, e: "💎", label: "$$$", sub: "Treat them" },
       ] },
-    { key: "foodie", type: "foodie", emoji: "🍜", q: "How much of a foodie is {name}?",
+    { key: "foodie", type: "foodie", emoji: "🍜",
+      q: { you: "How much of a foodie are you?", them: "How much of a foodie is {name}?" },
+      subq: { you: "Anything you won't eat?", them: "Anything they won't eat?" },
       options: [
         { v: 2, e: "🥪", label: "Eats to live", sub: "Food is fuel" },
         { v: 5, e: "🍝", label: "Likes good food", sub: "Happy to try a new spot" },
@@ -52,8 +66,8 @@
         ["seafood", "🦐 Seafood"], ["sushi", "🍣 Sushi"], ["spicy", "🌶️ Spicy"], ["meat", "🥩 Meat"],
         ["dairy", "🧀 Dairy"], ["gluten", "🍞 Gluten"], ["sweets", "🍰 Sweets"], ["coffee", "☕ Coffee"],
       ] },
-    { key: "active", type: "slider", q: "Active or low-key?", left: "Low-key", right: "Active" },
-    { key: "interests", type: "multi", emoji: "✨", q: "What is {name} into?", sub: "Pick as many as you like.",
+    { key: "active", type: "slider", q: { you: "Are you active or low-key?", them: "Is {name} active or low-key?" }, left: "Low-key", right: "Active" },
+    { key: "interests", type: "multi", emoji: "✨", q: { you: "What are you into?", them: "What is {name} into?" }, sub: { all: "Pick as many as you like." },
       options: [
         { v: "artsy", e: "🎨", label: "Artsy" }, { v: "sporty", e: "🏀", label: "Sporty" },
         { v: "nerdy", e: "🤓", label: "Nerdy" }, { v: "musical", e: "🎵", label: "Musical" },
@@ -62,36 +76,50 @@
         { v: "books", e: "📚", label: "Bookworm" }, { v: "fashion", e: "👗", label: "Fashion" },
         { v: "cooking", e: "🍳", label: "Cooking" }, { v: "theater", e: "🎭", label: "Theater & dance" },
       ] },
-    { key: "crowds", type: "slider", q: "Crowds or quiet?", left: "Quiet", right: "Crowds" },
-    { key: "love", type: "choice", emoji: "💝", q: "What's {name}'s love language?", sub: "Not sure? Pick the one that sounds most like them.",
+    { key: "crowds", type: "slider", q: { you: "Do you like crowds or quiet?", them: "Does {name} like crowds or quiet?" }, left: "Quiet", right: "Crowds" },
+    { key: "love", type: "choice", emoji: "💝",
+      q: { you: "What's your love language?", them: "What's {name}'s love language?" },
+      sub: { you: "Not sure? Pick the one that sounds most like you.", them: "Not sure? Pick the one that sounds most like them." },
       options: [
         { v: "time", e: "⏳", label: "Quality time", sub: "Undivided attention" },
         { v: "words", e: "💬", label: "Words of affirmation", sub: "Compliments and kind notes" },
         { v: "gifts", e: "🎁", label: "Gifts", sub: "Thoughtful little things" },
-        { v: "acts", e: "🛠️", label: "Acts of service", sub: "Doing things for them" },
+        { v: "acts", e: "🛠️", label: "Acts of service", sub: "Doing things for each other" },
         { v: "touch", e: "🤗", label: "Physical touch", sub: "Hugs, hand-holding" },
       ] },
   ];
-  const QUESTION_COUNT = QUIZ.length - 1; // the name screen isn't one of the 10
 
-  function freshAnswers() {
-    return { name: "", birthdate: "", outdoorsy: 5, outAbout: 5, adventure: 5, active: 5, crowds: 5,
+  // Pick the right wording for this quiz's voice.
+  function say(map, mode) {
+    if (!map) return "";
+    return map[mode] || (mode !== "them" ? map.you : null) || map.all || "";
+  }
+
+  function freshAnswers(name = "") {
+    return { name, birthdate: "", outdoorsy: 5, outAbout: 5, adventure: 5, active: 5, crowds: 5,
       budget: null, foodie: null, dislikes: [], interests: [], love: null };
   }
 
-  function startQuiz(editId) {
-    const p = editId && Store.get(editId);
-    S.quiz = { i: 0, answers: p ? JSON.parse(JSON.stringify(p.answers)) : freshAnswers(), editId: p ? p.id : null, dir: 1 };
+  // opts: { mode, editId, pendingId, from, to, pid, after }
+  function startQuiz(opts = {}) {
+    const mode = opts.mode || "them";
+    let answers;
+    if (mode === "me") answers = Store.me() ? JSON.parse(JSON.stringify(Store.me())) : freshAnswers();
+    else if (opts.editId && Store.get(opts.editId) && Store.get(opts.editId).answers) answers = JSON.parse(JSON.stringify(Store.get(opts.editId).answers));
+    else answers = freshAnswers(opts.to || (opts.pendingId && Store.get(opts.pendingId) ? Store.get(opts.pendingId).name : ""));
+    if (mode === "me" && answers.budget == null && Store.active() && Store.active().answers) answers.budget = Store.active().answers.budget ?? null;
+    const steps = QUIZ.filter((s) => !s.only || s.only.includes(mode));
+    S.quiz = { ...opts, mode, steps, i: 0, answers, dir: 1 };
     show("quiz");
     renderQuiz();
   }
 
-  const fill = (s) => s.replace("{name}", esc(S.quiz.answers.name || "them"));
+  const fill = (s) => s.replace("{name}", esc(S.quiz.answers.name || "them")).replace("{from}", esc(S.quiz.from || "them"));
 
   function stepValid(step, a) {
     switch (step.type) {
       case "text": return a.name.trim().length > 0;
-      case "date": { const age = Engine.ageFrom(a.birthdate); return age != null && age >= 13 && age <= 100; }
+      case "date": { const age = Engine.ageOf(a); return age != null && age >= 13 && age <= 100; }
       case "choice": return a[step.key] != null;
       case "foodie": return a.foodie != null;
       default: return true;
@@ -99,10 +127,11 @@
   }
 
   function renderQuiz() {
-    const { i, answers: a } = S.quiz;
-    const step = QUIZ[i];
-    $("#quiz-bar").style.width = (i / QUESTION_COUNT) * 100 + "%";
-    $("#quiz-count").textContent = i === 0 ? "" : `${i}/${QUESTION_COUNT}`;
+    const { i, answers: a, steps, mode } = S.quiz;
+    const step = steps[i];
+    const total = steps.length - 1; // the name screen isn't counted
+    $("#quiz-bar").style.width = (i / total) * 100 + "%";
+    $("#quiz-count").textContent = i === 0 ? "" : `${i}/${total}`;
     const body = $("#quiz-body");
     body.classList.remove("anim", "anim-back");
     void body.offsetWidth;
@@ -110,11 +139,12 @@
 
     let h = "";
     if (step.emoji) h += `<div class="q-emoji">${step.emoji}</div>`;
-    h += `<h2 class="q-title">${fill(step.q)}</h2>`;
-    if (step.sub) h += `<p class="q-sub">${fill(step.sub)}</p>`;
+    h += `<h2 class="q-title">${fill(say(step.q, mode))}</h2>`;
+    const sub = say(step.sub, mode);
+    if (sub) h += `<p class="q-sub">${fill(sub)}</p>`;
 
     if (step.type === "text") {
-      h += `<input id="q-input" class="field" type="text" maxlength="24" placeholder="Their name" value="${esc(a.name)}" autocomplete="off" enterkeyhint="next">`;
+      h += `<input id="q-input" class="field" type="text" maxlength="24" placeholder="${mode === "them" ? "Their name" : "Your name"}" value="${esc(a.name)}" autocomplete="off" enterkeyhint="next">`;
     } else if (step.type === "date") {
       const today = new Date().toISOString().slice(0, 10);
       h += `<input id="q-input" class="field" type="date" min="1925-01-01" max="${today}" value="${esc(a.birthdate)}">`;
@@ -124,7 +154,7 @@
       h += `<div class="slider-wrap">
         <div class="slider-face" id="s-face">${SLIDER_FACES[step.key][v - 1]}</div>
         <div class="slider-val" id="s-val">${v} / 10</div>
-        <input id="q-input" class="slider" type="range" min="1" max="10" step="1" value="${v}" aria-label="${esc(step.q)}">
+        <input id="q-input" class="slider" type="range" min="1" max="10" step="1" value="${v}" aria-label="${esc(fill(say(step.q, mode)))}">
         <div class="slider-ends"><span>${step.left}</span><span>${step.right}</span></div>
       </div>`;
     } else if (step.type === "choice" || step.type === "foodie") {
@@ -133,7 +163,7 @@
         `<button class="tile ${cur === o.v ? "on" : ""}" data-v="${o.v}"><span class="te">${o.e}</span><span><b>${o.label}</b>${o.sub ? `<small>${o.sub}</small>` : ""}</span></button>`
       ).join("") + `</div>`;
       if (step.type === "foodie") {
-        h += `<div class="sub-q">Anything they won't eat?</div><div class="chips-light">` +
+        h += `<div class="sub-q">${say(step.subq, mode)}</div><div class="chips-light">` +
           step.dislikes.map(([v, label]) => `<button class="chip-l ${a.dislikes.includes(v) ? "on" : ""}" data-d="${v}">${label}</button>`).join("") +
           `</div>`;
       }
@@ -145,18 +175,20 @@
     body.innerHTML = h;
     bindQuizStep(step);
 
-    const last = i === QUIZ.length - 1;
-    $("#quiz-next").textContent = last ? (S.quiz.editId ? "Save answers" : "Almost done →") : "Next";
+    const last = i === steps.length - 1;
+    const doneLabel = mode === "self" ? "Done ✓" : S.quiz.editId || S.quiz.after === "main" ? "Save answers" : "Almost done →";
+    $("#quiz-next").textContent = last ? doneLabel : "Next";
     refreshNext();
   }
 
   function refreshNext() {
-    const step = QUIZ[S.quiz.i];
+    const step = S.quiz.steps[S.quiz.i];
     $("#quiz-next").disabled = !stepValid(step, S.quiz.answers);
   }
 
   function bindQuizStep(step) {
     const a = S.quiz.answers;
+    const mode = S.quiz.mode;
     const input = $("#q-input");
     if (step.type === "text") {
       input.addEventListener("input", () => { a.name = input.value; refreshNext(); });
@@ -164,17 +196,19 @@
       setTimeout(() => input.focus(), 350);
     } else if (step.type === "date") {
       const note = () => {
-        const age = Engine.ageFrom(a.birthdate);
+        const age = Engine.ageOf(a);
         const el = $("#age-note");
+        const who = mode === "them" ? `That makes ${esc(a.name)} ${age}` : `You're ${age}`;
         if (age == null) el.innerHTML = "";
         else if (age < 13) el.innerHTML = "Date Me is for ages 13 and up.";
         else if (age > 100) el.innerHTML = "Hmm, double-check that year.";
-        else if (age < 18) el.innerHTML = `That makes ${esc(a.name)} ${age} 🎂<small>We'll keep every idea teen-friendly.</small>`;
-        else if (age < 21) el.innerHTML = `That makes ${esc(a.name)} ${age} 🎂<small>No bar or alcohol ideas until 21.</small>`;
-        else el.innerHTML = `That makes ${esc(a.name)} ${age} 🎂`;
+        else if (age < 18) el.innerHTML = `${who} 🎂<small>We'll keep every idea teen-friendly.</small>`;
+        else if (age < 21) el.innerHTML = `${who} 🎂<small>No bar or alcohol ideas until 21.</small>`;
+        else el.innerHTML = `${who} 🎂`;
       };
-      input.addEventListener("input", () => { a.birthdate = input.value; note(); refreshNext(); });
-      input.addEventListener("change", () => { a.birthdate = input.value; note(); refreshNext(); });
+      const set = () => { a.birthdate = input.value; delete a.age; delete a.ageAt; note(); refreshNext(); };
+      input.addEventListener("input", set);
+      input.addEventListener("change", set);
       note();
     } else if (step.type === "slider") {
       input.addEventListener("input", () => {
@@ -189,7 +223,7 @@
         a[step.key] = v;
         $$(".tile", $("#quiz-body")).forEach((x) => x.classList.toggle("on", x === b));
         refreshNext();
-        setTimeout(() => { if (S.quiz && QUIZ[S.quiz.i] === step) quizNext(); }, 260);
+        setTimeout(() => { if (S.quiz && S.quiz.steps[S.quiz.i] === step) quizNext(); }, 260);
       }));
     } else if (step.type === "foodie") {
       $$(".tile", $("#quiz-body")).forEach((b) => b.addEventListener("click", () => {
@@ -213,32 +247,166 @@
 
   function quizNext() {
     const q = S.quiz;
-    if (!q || !stepValid(QUIZ[q.i], q.answers)) return;
-    if (q.i < QUIZ.length - 1) { q.i++; q.dir = 1; renderQuiz(); return; }
+    if (!q || !stepValid(q.steps[q.i], q.answers)) return;
+    if (q.i < q.steps.length - 1) { q.i++; q.dir = 1; renderQuiz(); return; }
     finishQuiz();
   }
 
   function quizBack() {
     const q = S.quiz;
     if (q.i > 0) { q.i--; q.dir = -1; renderQuiz(); return; }
-    if (Store.active()) showMain(); else show("welcome");
+    const mode = q.mode;
+    S.quiz = null;
+    if (mode === "self") showInvite(S.invite);
+    else if (mode === "them" && !q.editId && Store.me()) showWho();
+    else if (Store.active()) showMain();
+    else show("welcome");
   }
 
   function finishQuiz() {
-    const { answers, editId } = S.quiz;
+    const q = S.quiz;
+    const answers = q.answers;
     answers.name = answers.name.trim();
     S.quiz = null;
-    if (editId) {
-      Store.updateAnswers(editId, answers);
-      Store.setActive(editId);
+    if (q.mode === "me") {
+      Store.setMe(answers);
+      resetDeck();
+      if (q.after === "main" && Store.active()) { showMain("discover"); toast("Saved ✓ Ideas now fit you both"); }
+      else if (Store.active()) showMain("discover");
+      else showWho();
+    } else if (q.mode === "self") {
+      showSent(answers);
+    } else if (q.editId || q.pendingId) {
+      const id = q.editId || q.pendingId;
+      Store.updateAnswers(id, answers, "me");
+      Store.setActive(id);
       resetDeck();
       showMain("discover");
       toast("Answers saved ✓");
     } else {
-      const p = Store.create(answers);
+      const p = Store.create(answers, { by: "me" });
       resetDeck();
       startLocation(p.id);
     }
+  }
+
+  // ======================================================================
+  //  WHO ARE YOU DATING? — answer for them, or send them the quiz
+  // ======================================================================
+  function showWho() {
+    $("#who-send").hidden = true;
+    $("#who-choices").hidden = false;
+    $("#who-name-input").value = "";
+    $("#who-back").style.visibility = Store.active() ? "visible" : "hidden";
+    show("who");
+  }
+
+  async function sendQuiz(pid, toName) {
+    const me = Store.me();
+    const url = Invite.inviteUrl(pid, me ? me.name : "", toName);
+    const from = me && me.name ? `${me.name} here! ` : "";
+    await shareText(`Hey ${toName}! ${from}💘 I want to plan dates you'll actually love. Can you answer 9 quick questions about yourself? Takes a minute:\n${url}`);
+    Store.markInvited(pid);
+  }
+
+  async function whoSend() {
+    const name = $("#who-name-input").value.trim();
+    if (!name) { $("#who-name-input").focus(); return; }
+    const p = Store.create(null, { name, invited: true });
+    resetDeck();
+    await sendQuiz(p.id, name);
+    toast(`Quiz sent to ${name} 💌`);
+    startLocation(p.id);
+  }
+
+  // ======================================================================
+  //  INVITES & ANSWER LINKS
+  // ======================================================================
+  // Their side: someone sent them the quiz.
+  function showInvite(inv) {
+    S.invite = inv;
+    $("#invite-title").textContent = `${inv.from} wants to plan dates you'll love`;
+    $("#invite-sub").textContent = `Answer 9 quick questions about yourself. It takes about a minute, and your answers only go to ${inv.from}.`;
+    show("invite");
+  }
+
+  function showSent(answers) {
+    S.selfAnswers = answers;
+    const inv = S.invite || { from: "them" };
+    $("#sent-title").textContent = `All done, ${answers.name}! 🎉`;
+    $("#sent-sub").textContent = `Now send your answers back to ${inv.from} so they can start planning.`;
+    $("#sent-send").textContent = `💌 Send to ${inv.from}`;
+    $("#sent-own").hidden = false;
+    show("sent");
+  }
+
+  function sentUrl() {
+    return Invite.answersUrl(S.selfAnswers, S.invite ? S.invite.pid : "");
+  }
+
+  async function sentSend() {
+    await shareText(`${S.selfAnswers.name}'s Date Me answers 💘 Tap to add them:\n${sentUrl()}`);
+  }
+
+  async function sentCopy() {
+    try { await navigator.clipboard.writeText(sentUrl()); toast("Link copied 💬"); }
+    catch (e) { prompt("Copy this link:", sentUrl()); }
+  }
+
+  // They liked it and want their own Date Me: their answers become "me".
+  function sentOwn() {
+    if (!Store.me()) Store.setMe({ ...S.selfAnswers, budget: null });
+    S.invite = null;
+    showWho();
+  }
+
+  // Your side: their answers came back.
+  function showImport(data) {
+    S.importing = data;
+    const a = data.answers;
+    const existing = data.pid && Store.get(data.pid);
+    const bits = [a.age ? `${a.age}` : null, a.interests.length ? `into ${a.interests.slice(0, 3).join(", ")}` : null,
+      a.love ? `love language: ${{ time: "quality time", words: "words", gifts: "gifts", acts: "acts of service", touch: "touch" }[a.love]}` : null].filter(Boolean);
+    $("#import-title").textContent = `✨ ${a.name} answered!`;
+    $("#import-sub").textContent = bits.join(" · ");
+    $("#import-note").textContent = existing ? `This updates ${existing.name}'s profile with their own answers.` : "This adds them to your Date Me.";
+    show("import");
+  }
+
+  function importGo() {
+    const { pid, answers } = S.importing;
+    S.importing = null;
+    let p = pid && Store.get(pid);
+    if (p) {
+      Store.updateAnswers(p.id, answers, "them");
+      Store.setActive(p.id);
+    } else {
+      p = Store.create(answers, { by: "them", id: pid || undefined });
+    }
+    resetDeck();
+    toast(`${answers.name}'s answers are in ✨`);
+    if (!Store.me()) startQuiz({ mode: "me", after: "main" });
+    else if (!p.place) startLocation(p.id);
+    else showMain("discover");
+  }
+
+  function pasteAnswers() {
+    const text = prompt("Paste the link they sent you:");
+    if (!text) return;
+    const got = Invite.parse(text);
+    if (!got) { toast("That doesn't look like a Date Me link"); return; }
+    if (got.type === "answers") showImport(got);
+    else showInvite(got);
+  }
+
+  // Links open the app with #invite=... or #answers=...; handle once, then tidy the address bar.
+  function handleHash() {
+    const got = Invite.parse(location.hash);
+    if (!got) return false;
+    try { history.replaceState(null, "", location.pathname + location.search); } catch (e) { /* ignore */ }
+    if (got.type === "invite") showInvite(got);
+    else showImport(got);
+    return true;
   }
 
   // ======================================================================
@@ -418,11 +586,17 @@
     if (idea.place) return `<div class="place-line">📍 ${idea.place.url ? `<a href="${esc(idea.place.url)}" target="_blank" rel="noopener">${esc(idea.place.name)}</a>` : esc(idea.place.name)}</div>`;
     const p = Store.active();
     const kind = Spots.kindFor(idea);
-    if (!kind || !p || !p.place) return "";
-    const list = Spots.forIdea(idea, p.place);
+    if (!p) return "";
+    const list = kind && p.place ? Spots.forIdea(idea, p.place) : null;
     if (list && list.length) return `<div class="place-line">📍 ${spotLink(list[0])}${list.length > 1 ? ` <small>+${list.length - 1} more</small>` : ""}</div>`;
-    if (list || S.spotTried.has(kind)) return "";
-    return `<div class="place-line wait">📍 Finding the nearest one…</div>`;
+    return findLine(idea);
+  }
+
+  // "📍 Find goat yoga near you" -> Google Maps around their location.
+  function findLine(idea) {
+    const p = Store.active();
+    const near = Shop.nearby(idea, p && p.place);
+    return near ? `<div class="place-line">📍 <a href="${esc(near.url)}" target="_blank" rel="noopener">Find ${esc(near.label)} near you</a></div>` : "";
   }
 
   function refreshSpotSlots(kind) {
@@ -580,6 +754,7 @@
     } else {
       pills.push(`<button class="pill hot" data-act="change-loc" data-id="${p.id}">📍 Add location</button>`);
     }
+    if (!p.answers) pills.push(`<button class="pill hot" data-act="tab" data-tab="people">⏳ Waiting on ${esc(p.name)}</button>`);
     pills.push(`<span class="pill">${SEASON_PILL[ctx.season]}</span>`);
     const f = p.filters, bits = [];
     bits.push(f.budget === 0 ? "Free" : "Up to " + Engine.fmtCost(f.budget));
@@ -690,8 +865,11 @@
     const list = kind && p.place ? Spots.forIdea({ ...i, spot: kind }, p.place) : null;
     let spotsHTML = "";
     if (i.place) spotsHTML = spotLine(i);
-    else if (list && list.length) spotsHTML = `<div class="spot-list"><b>Near you</b>${list.map((sp) => `<div>📍 ${spotLink(sp)}</div>`).join("")}</div>`;
-    else if (kind && p.place && !list && !S.spotTried.has(kind)) { spotsHTML = `<div class="place-line wait">📍 Finding the nearest one…</div>`; requestSpot(kind); }
+    else if (list && list.length) spotsHTML = `<div class="spot-list"><b>Near you</b>${list.map((sp) => `<div>📍 ${spotLink(sp)}</div>`).join("")}</div>${findLine(i).replace("Find ", "Find more ")}`;
+    else {
+      spotsHTML = findLine(i);
+      if (kind && p.place && !list && !S.spotTried.has(kind)) requestSpot(kind);
+    }
     $("#idea-box").dataset.id = i.id;
     $("#idea-box").dataset.kind = kind || "";
     $("#idea-box").innerHTML = `
@@ -789,7 +967,8 @@
   function openAI() {
     const p = Store.active();
     $("#ai-title").textContent = `✨ Plan something for ${p.name}`;
-    $("#ai-sub").textContent = `The AI looks at ${p.name}'s answers${p.place ? ", what's around " + p.place.label.split(",")[0] : ""}, the season and the weather, then writes 5 ideas just for them.`;
+    const both = Store.me() && p.answers;
+    $("#ai-sub").textContent = `The AI looks at ${both ? "both your answers" : p.answers ? p.name + "'s answers" : "your answers"}${p.place ? ", what's around " + p.place.label.split(",")[0] : ""}, the season and the weather, then writes 5 ideas ${both ? "you'll both love" : "just for " + (p.answers ? "them" : "you two")}.`;
     $$("#ai-chips .chip").forEach((c) => c.classList.remove("on"));
     $("#ai-text").value = "";
     $("#ai-form").hidden = false;
@@ -855,19 +1034,33 @@
   // ======================================================================
   function renderPeople() {
     const active = Store.active();
-    $("#people-list").innerHTML = Store.all().map((p) => {
-      const age = Engine.ageFrom(p.answers.birthdate);
+    const me = Store.me();
+    const meAge = Engine.ageOf(me);
+    const meCard = me
+      ? `<div class="p-card me">
+          <div class="p-top">
+            <div class="avatar me">${esc((me.name || "Y").charAt(0).toUpperCase())}</div>
+            <div><b>${esc(me.name || "You")} <span class="you-tag">You</span></b><small>${meAge != null ? meAge + " · " : ""}${me.interests.length ? "into " + esc(me.interests.slice(0, 3).join(", ")) : "your answers"}</small></div>
+          </div>
+          <div class="p-btns"><button data-act="edit-me">✏️ Redo my quiz</button></div>
+        </div>`
+      : `<div class="p-card me"><div class="p-top"><div class="avatar me">?</div><div><b>You</b><small>Answer a few questions so ideas fit you both</small></div></div>
+          <div class="p-btns"><button class="go" data-act="edit-me">✨ Tell us about you</button></div></div>`;
+    const status = (p) => !p.answers ? "⏳ Waiting on their answers" : p.answeredBy === "them" ? `✓ Answered by ${esc(p.name)}` : "✍️ You answered for them";
+    $("#people-list").innerHTML = meCard + Store.all().map((p) => {
+      const age = Engine.ageOf(p.answers);
       const where = p.place ? `📍 ${esc(p.place.label)}` : "📍 No location";
       const isOn = active && active.id === p.id;
       return `<div class="p-card ${isOn ? "active" : ""}">
         <div class="p-top">
           <div class="avatar">${esc((p.name || "?").charAt(0).toUpperCase())}</div>
-          <div><b>${esc(p.name)}</b><small>${age != null ? age + " · " : ""}${where} · ♥ ${p.saved.length}</small></div>
+          <div><b>${esc(p.name)}</b><small>${age != null ? age + " · " : ""}${where} · ♥ ${p.saved.length}</small><small class="p-status">${status(p)}</small></div>
           ${isOn ? `<span class="tag-on">Planning for</span>` : ""}
         </div>
         <div class="p-btns">
           ${isOn ? "" : `<button class="go" data-act="switch" data-id="${p.id}">Plan for ${esc(p.name)}</button>`}
-          <button data-act="edit" data-id="${p.id}">✏️ Redo quiz</button>
+          ${p.answeredBy === "them" ? "" : `<button data-act="resend" data-id="${p.id}">💌 ${p.invitedAt ? "Resend" : "Send them"} the quiz</button>`}
+          <button data-act="${p.answers ? "edit" : "answer-for"}" data-id="${p.id}">✍️ ${p.answers ? "Edit answers" : "Answer for them"}</button>
           <button data-act="change-loc" data-id="${p.id}">📍 Location</button>
           ${p.skipped.length ? `<button data-act="unskip" data-id="${p.id}">↺ ${p.skipped.length} skipped</button>` : ""}
           <button class="danger" data-act="delete" data-id="${p.id}">🗑️ Delete</button>
@@ -885,7 +1078,7 @@
       Store.remove(id);
       resetDeck();
       toast(`${name} deleted`);
-      if (!Store.active()) { show("welcome"); return; }
+      if (!Store.active()) { if (Store.me()) showWho(); else show("welcome"); return; }
       showMain("people");
       return;
     }
@@ -933,7 +1126,7 @@
   //  SHELL
   // ======================================================================
   function show(name) {
-    ["welcome", "quiz", "location", "main"].forEach((s) => { $("#screen-" + s).hidden = s !== name; });
+    ["welcome", "quiz", "location", "main", "who", "invite", "sent", "import", "meintro"].forEach((s) => { $("#screen-" + s).hidden = s !== name; });
   }
 
   function showMain(tab) {
@@ -981,7 +1174,24 @@
     if (!el) return;
     const act = el.dataset.act, id = el.dataset.id;
     switch (act) {
-      case "start-quiz": startQuiz(); break;
+      case "start-quiz": startQuiz({ mode: "me" }); break;
+      case "edit-me": startQuiz({ mode: "me", after: "main" }); break;
+      case "meintro-go": startQuiz({ mode: "me", after: "main" }); break;
+      case "meintro-later": showMain("discover"); break;
+      case "who-answer": startQuiz({ mode: "them" }); break;
+      case "who-send-open": $("#who-choices").hidden = true; $("#who-send").hidden = false; setTimeout(() => $("#who-name-input").focus(), 50); break;
+      case "who-send": whoSend(); break;
+      case "who-back": if (Store.active()) showMain(); break;
+      case "invite-start": startQuiz({ mode: "self", from: S.invite.from, to: S.invite.to, pid: S.invite.pid }); break;
+      case "invite-own": S.invite = null; if (Store.active()) showMain(); else if (Store.me()) showWho(); else show("welcome"); break;
+      case "sent-send": sentSend(); break;
+      case "sent-copy": sentCopy(); break;
+      case "sent-own": sentOwn(); break;
+      case "import-go": importGo(); break;
+      case "import-cancel": S.importing = null; if (Store.active()) showMain(); else show("welcome"); break;
+      case "paste-answers": pasteAnswers(); break;
+      case "resend": { const rp = Store.get(id); if (rp) sendQuiz(rp.id, rp.name).then(() => renderPeople()); break; }
+      case "answer-for": startQuiz({ mode: "them", pendingId: id }); break;
       case "quiz-next": quizNext(); break;
       case "quiz-back": quizBack(); break;
       case "use-gps": locGPS(); break;
@@ -1008,9 +1218,9 @@
         break;
       case "share-idea": shareIdea(id); break;
       case "share-app": shareApp(); break;
-      case "new-person": startQuiz(); break;
+      case "new-person": showWho(); break;
       case "switch": Store.setActive(id); resetDeck(); showMain("discover"); break;
-      case "edit": startQuiz(id); break;
+      case "edit": startQuiz({ mode: "them", editId: id }); break;
       case "change-loc": startLocation(id || Store.active().id); break;
       case "unskip": Store.clearSkipped(id); if (Store.active().id === id) { S.history = []; rebuildDeck(); } renderPeople(); toast("Skipped ideas are back in the deck"); break;
       case "unskip-all": Store.clearSkipped(Store.active().id); S.history = []; rebuildDeck(); break;
@@ -1030,6 +1240,8 @@
 
   $$("#ai-chips .chip").forEach((c) => c.addEventListener("click", () => c.classList.toggle("on")));
 
+  $("#who-name-input").addEventListener("keydown", (e) => { if (e.key === "Enter") whoSend(); });
+
   $("#loc-form").addEventListener("submit", (e) => { e.preventDefault(); $("#loc-input").blur(); locSearch($("#loc-input").value); });
 
   document.addEventListener("keydown", (e) => {
@@ -1041,5 +1253,11 @@
 
   // ---------- boot ----------
   Store.load();
-  if (Store.active()) showMain("discover"); else show("welcome");
+  window.addEventListener("hashchange", handleHash);
+  if (!handleHash()) {
+    if (Store.active() && !Store.me()) show("meintro");      // older profiles: ask about "you" once
+    else if (Store.active()) showMain("discover");
+    else if (Store.me()) showWho();
+    else show("welcome");
+  }
 })();

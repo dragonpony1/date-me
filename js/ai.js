@@ -20,15 +20,18 @@
   const slug = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 40);
 
   function payload(profile, request) {
-    const a = profile.answers;
+    const person = (a) => a && {
+      age: DM.Engine.ageOf(a),
+      outdoorsy: a.outdoorsy, outAbout: a.outAbout, adventure: a.adventure, active: a.active, crowds: a.crowds,
+      foodie: a.foodie, dislikes: a.dislikes, interests: a.interests, love: a.love,
+    };
+    const me = DM.Store.me();
     const place = profile.place;
     const today = new Date();
     const body = {
-      profile: {
-        age: DM.Engine.ageFrom(a.birthdate),
-        outdoorsy: a.outdoorsy, outAbout: a.outAbout, adventure: a.adventure, active: a.active, crowds: a.crowds,
-        budget: a.budget, foodie: a.foodie, dislikes: a.dislikes, interests: a.interests, love: a.love,
-      },
+      profile: person(profile.answers),   // the person being taken on the date (null if we're waiting on them)
+      me: person(me),                     // the planner
+      budget: profile.filters ? profile.filters.budget : me && me.budget,
       season: SEASON[DM.Engine.seasonFor(today, place ? place.lat : 40)],
       today: today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" }),
       filters: profile.filters,

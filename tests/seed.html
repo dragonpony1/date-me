@@ -1,6 +1,6 @@
 <!doctype html>
 <!-- Test fixture: loads a sample profile, then shows the app at phone size.
-     ?view=deck | saved | spin | filters | people | idea | interests | ai | aicard | welcome
+     ?view=deck | saved | spin | filters | people | idea | interests | ai | aicard | who | invite | welcome
      Overwrites this browser's Date Me data, so only use it on a test browser. -->
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>html,body{margin:0}iframe{border:0;position:fixed;left:0;top:0;width:375px;height:812px}</style></head>
 <body>
@@ -25,10 +25,13 @@
     skipped: [], filters: { budget: 2, io: "any", time: "any", dist: 3 },
     aiIdeas: view === "aicard" ? [{ id: "ai:bird-show-ramen-test", t: "Bird show & ramen", e: "🦜", cat: "culture", d: "Catch the indoor bird show at the aviary, then warm up with big bowls of ramen.", aiWhy: "they love animals and it's chilly", c: 2, m: 180, io: "in", w: "a", int: ["animals", "artsy", "outdoorsy"], love: ["time"], fd: [], act: 2, adv: 5, crowd: 4, food: 6, tr: 1, age: 0, place: { name: "Tracy Aviary", url: "https://www.google.com/maps/search/Tracy%20Aviary" } }] : [],
   };
-  if (view === "welcome") localStorage.removeItem("dateme:v1");
-  else localStorage.setItem("dateme:v1", JSON.stringify({ version: 1, activeId: "test1", profiles: { test1: profile } }));
+  const me = { name: "Matt", birthdate: "2005-02-10", outdoorsy: 9, outAbout: 5, adventure: 8, active: 5, crowds: 5, budget: 1, foodie: 5, dislikes: ["sushi"], interests: ["outdoorsy", "animals"], love: "time" };
+  if (view === "welcome" || view === "invite") localStorage.removeItem("dateme:v1");
+  else if (view === "who") localStorage.setItem("dateme:v1", JSON.stringify({ version: 1, me: { answers: me }, activeId: null, profiles: {} }));
+  else localStorage.setItem("dateme:v1", JSON.stringify({ version: 1, me: { answers: me }, activeId: "test1", profiles: { test1: profile } }));
 </script>
 <iframe id="f" src="../index.html"></iframe>
+<script>if (view === "invite") document.getElementById("f").src = "../index.html#invite=eyJ2IjoxLCJwIjoiYWJjIiwiZiI6Ik1hdHQiLCJvIjoiUmlsZXkifQ";</script>
 <script>
   const f = document.getElementById("f");
   f.onload = () => setTimeout(() => {

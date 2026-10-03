@@ -88,6 +88,14 @@
   }
 
   // ---------- context helpers ----------
+  // Age from a birthday, or from an age someone shared at a known time (quiz links carry age, not birthday).
+  function ageOf(a, now = new Date()) {
+    if (!a) return null;
+    if (a.birthdate) return ageFrom(a.birthdate, now);
+    if (a.age != null) return a.age + Math.floor((now - (a.ageAt || now)) / (365.25 * 864e5));
+    return null;
+  }
+
   function ageFrom(birthdate, now = new Date()) {
     if (!birthdate) return null;
     const b = new Date(birthdate + "T12:00:00");
@@ -121,7 +129,7 @@
     const { answers, age, season, place, filters } = ctx;
     if (age != null && idea.age > age) return "age";
     if (idea.s && !idea.s.includes(season)) return "season";
-    const dislikes = answers.dislikes || [];
+    const dislikes = ctx.dislikes || answers.dislikes || [];
     if (idea.fd.some((f) => dislikes.includes(f))) return "food";
 
     const feats = (place && place.features) || {};
@@ -148,6 +156,11 @@
     animals: "an animal lover's pick", cars: "for the car lover", books: "bookworm-approved",
     fashion: "for their sense of style", cooking: "they love to cook", theater: "for their dramatic side",
   };
+  const BOTH_WHY = {
+    artsy: "you're both artsy", sporty: "you're both sporty", nerdy: "two nerds, perfect", musical: "you both love music",
+    outdoorsy: "you both love the outdoors", gamer: "you're both gamers", animals: "you both love animals", cars: "you're both car people",
+    books: "two bookworms", fashion: "you both love style", cooking: "you both love to cook", theater: "you're both theater kids",
+  };
   const LOVE_WHY = {
     time: "real quality time", words: "room for sweet words", gifts: "a little gift in it",
     acts: "a thoughtful act of service", touch: "lots of closeness",
@@ -162,11 +175,13 @@
   const sim = (p, v) => 1 - Math.abs(p - v) / 10; // 0..1
 
   function score(idea, ctx) {
-    const a = ctx.answers;
+    const a = ctx.answers;                                  // the person being taken on the date
+    const me = ctx.me && ctx.me !== ctx.answers ? ctx.me : null; // the planner, when we know them
     const reasons = []; // [weight, text]
     let s = 0;
 
-    // Personality sliders: closer = better. Each worth up to ±weight.
+    // Personality sliders: closer = better. Each worth up to ±weight. With both of you known,
+    // their fit counts a little more than yours (it's their date), but yours matters too.
     const dims = [
       ["outdoorsy", "od", 1.4],
       ["active", "act", 1.2],
@@ -175,33 +190,44 @@
       ["crowds", "crowd", 0.9],
     ];
     for (const [key, field, w] of dims) {
-      const p = a[key] != null ? a[key] : 5;
-      s += w * (sim(p, idea[field]) - 0.5) * 2;
+      let fit = sim(a[key] != null ? a[key] : 5, idea[field]);
+      if (me) fit = 0.55 * fit + 0.45 * sim(me[key] != null ? me[key] : 5, idea[field]);
+      s += w * (fit - 0.5) * 2;
     }
-    if (a.adventure >= 7 && idea.adv >= 7) reasons.push([1.1, "fits their adventurous side"]);
-    if (a.adventure <= 3 && idea.adv <= 2) reasons.push([0.8, "nice and chill, like them"]);
+    const both = (key, test) => test(a[key]) && me && test(me[key]);
+    if (both("adventure", (v) => v >= 7) && idea.adv >= 7) reasons.push([1.3, "you're both up for adventure"]);
+    else if (a.adventure >= 7 && idea.adv >= 7) reasons.push([1.1, "fits their adventurous side"]);
+    if (a.adventure <= 3 && idea.adv <= 2) reasons.push([0.8, me && me.adventure <= 3 ? "nice and chill, like you two" : "nice and chill, like them"]);
     if (a.outAbout <= 3 && idea.tr === 0) reasons.push([1.0, "cozy at home"]);
-    if (a.outdoorsy >= 7 && idea.od >= 8) reasons.push([0.9, "gets them outside"]);
+    if (both("outdoorsy", (v) => v >= 7) && idea.od >= 8) reasons.push([1.1, "you're both outdoorsy"]);
+    else if (a.outdoorsy >= 7 && idea.od >= 8) reasons.push([0.9, "gets them outside"]);
     if (a.active >= 7 && idea.act >= 7) reasons.push([0.9, "keeps them moving"]);
     if (a.crowds <= 3 && idea.crowd <= 1) reasons.push([0.7, "quiet, just you two"]);
 
     // Food: foodies love food dates; "eats to live" types less so.
     if (idea.food >= 6) {
-      const f = ((a.foodie != null ? a.foodie : 5) - 5) / 5; // -0.6 .. +0.8
+      const foodie = me ? ((a.foodie != null ? a.foodie : 5) + (me.foodie != null ? me.foodie : 5)) / 2 : a.foodie != null ? a.foodie : 5;
+      const f = (foodie - 5) / 5; // -0.6 .. +0.8
       s += f * 1.3;
-      if (f > 0.5) reasons.push([1.0, "made for a foodie"]);
+      if (f > 0.5) reasons.push([1.0, me ? "made for two foodies" : "made for a foodie"]);
     }
 
-    // Interests: the strongest signal.
-    const hits = idea.int.filter((i) => (a.interests || []).includes(i));
-    s += Math.min(hits.length, 2) * 1.3;
-    hits.forEach((i) => reasons.push([1.5, INTEREST_WHY[i]]));
+    // Interests: the strongest signal. Shared ones count most.
+    const theirs = idea.int.filter((i) => (a.interests || []).includes(i));
+    const mine = me ? idea.int.filter((i) => (me.interests || []).includes(i)) : [];
+    const shared = theirs.filter((i) => mine.includes(i));
+    const onlyTheirs = theirs.filter((i) => !shared.includes(i));
+    const onlyMine = mine.filter((i) => !shared.includes(i));
+    s += Math.min(shared.length, 2) * 1.8 + Math.min(onlyTheirs.length, 2) * 1.2 + Math.min(onlyMine.length, 1) * 0.5;
+    shared.forEach((i) => reasons.push([1.8, BOTH_WHY[i]]));
+    onlyTheirs.forEach((i) => reasons.push([1.5, INTEREST_WHY[i]]));
 
-    // Love language.
+    // Love language: theirs matters most; yours a little.
     if (a.love && idea.love.includes(a.love)) {
       s += 1.0;
       reasons.push([1.2, LOVE_WHY[a.love]]);
     }
+    if (me && me.love && me.love !== a.love && idea.love.includes(me.love)) s += 0.4;
 
     // Season: time-limited ideas get a push while they're possible.
     if (idea.s && idea.s.length <= 2) {
@@ -253,13 +279,18 @@
       .sort((x, y) => y.score - x.score);
   }
 
+  // Both people's answers feed the deck. If we're still waiting on theirs, we go on yours alone.
   function buildContext(profile, extra = {}) {
-    const a = profile.answers;
+    const me = extra.me !== undefined ? extra.me : DM.Store && DM.Store.me ? DM.Store.me() : null;
+    const a = profile.answers || me || {};
     const place = profile.place;
     const now = new Date();
+    const ages = [ageOf(profile.answers, now), ageOf(me, now)].filter((x) => x != null);
     return {
       answers: a,
-      age: ageFrom(a.birthdate, now),
+      me,
+      dislikes: [...new Set([...(a.dislikes || []), ...((me && me.dislikes) || [])])],
+      age: ages.length ? Math.min(...ages) : null,
       season: seasonFor(now, place ? place.lat : 40),
       place,
       filters: profile.filters,
@@ -284,6 +315,6 @@
 
   DM.Engine = {
     registerSource, sources, normalize, gather, blocked, score, rank, buildContext,
-    ageFrom, seasonFor, SEASON_NAME, fmtCost, fmtTime, ioLabel,
+    ageFrom, ageOf, seasonFor, SEASON_NAME, fmtCost, fmtTime, ioLabel,
   };
 })();

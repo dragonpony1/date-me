@@ -14,7 +14,8 @@ Swipe right on date ideas, not people. A phone-first web app with no server and 
 | `js/spots.js` | Real named places near you (nearest bowling alley, trailhead, sushi...) per idea |
 | `js/ai.js` | ✨ AI planner: sends quiz answers (never the name) + area to the date-me-ai worker, gets 5 custom ideas back |
 | `js/shop.js` | "Get the kit" (Amazon), "Book it" (GetYourGuide), "Find tickets" (Ticketmaster) buttons; affiliate IDs go in `AFFILIATE` at the top |
-| `js/store.js` | Profiles, saved ideas and AI ideas in localStorage |
+| `js/invite.js` | "Send them the quiz": invite and answers links (data rides in the # part of the link; age only, never birthday) |
+| `js/store.js` | You (`me`), the people you date, saved ideas and AI ideas in localStorage |
 | `js/app.js` | Quiz, swipe deck, saved list, spin, filters, people |
 | `tests/engine-test.js` | `node tests/engine-test.js`: headless checks of the engine |
 | `tests/seed.html` | Loads a sample profile for screenshots (`?view=deck|saved|spin|filters|people|idea`) |
@@ -24,6 +25,10 @@ Swipe right on date ideas, not people. A phone-first web app with no server and 
 - **OpenStreetMap Nominatim**: turns a city or zip into a map point
 - **Overpass**: counts lakes, peaks, trails, beaches, rivers, hot springs and ski areas nearby, and finds the nearest real spot for each card. The public servers are often busy, so the app tries backups and caches answers for a week.
 - **Open-Meteo**: today's weather and elevation
+
+## How the quiz works
+
+You answer once about yourself (including your date budget). For each person you date, you either answer for them or send them the quiz: they answer about themselves on their phone and send a link back, which loads their answers. Ideas are scored for both of you (shared interests count most, foods either won't eat are hidden, age rules use the younger person).
 
 ## AI planner
 
