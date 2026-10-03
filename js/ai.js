@@ -23,7 +23,7 @@
     const person = (a) => a && {
       age: DM.Engine.ageOf(a),
       outdoorsy: a.outdoorsy, outAbout: a.outAbout, adventure: a.adventure, active: a.active, crowds: a.crowds,
-      foodie: a.foodie, dislikes: a.dislikes, interests: a.interests, love: a.love,
+      foodie: a.foodie, dislikes: a.dislikes, interests: a.interests, love: a.love, getAround: a.getAround || null,
     };
     const me = DM.Store.me();
     const place = profile.place;

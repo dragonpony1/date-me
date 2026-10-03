@@ -43,7 +43,7 @@
   function compact(a, pid, tok) {
     return {
       v: 1, p: pid, k: tok || undefined, n: a.name, g: DM.Engine.ageOf(a), o: a.outdoorsy, h: a.outAbout, d: a.adventure,
-      c: a.active, q: a.crowds, f: a.foodie, x: a.dislikes || [], i: a.interests || [], l: a.love, t: Date.now(),
+      c: a.active, q: a.crowds, f: a.foodie, x: a.dislikes || [], i: a.interests || [], l: a.love, r: a.getAround || undefined, t: Date.now(),
     };
   }
 
@@ -65,6 +65,7 @@
         outdoorsy: num(c.o, 5), outAbout: num(c.h, 5), adventure: num(c.d, 5), active: num(c.c, 5), crowds: num(c.q, 5),
         foodie: [2, 5, 9].includes(+c.f) ? +c.f : 5,
         dislikes: list(c.x, FOODS), interests: list(c.i, INTERESTS), love: LOVES.includes(c.l) ? c.l : null,
+        getAround: ["drive", "transit", "ride"].includes(c.r) ? c.r : null,
       },
     };
   }

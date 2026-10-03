@@ -64,6 +64,7 @@
       need: raw.need || [],
       fd: raw.fd || [],
       age: raw.age || 0,
+      y: !!raw.y, grown: !!raw.grown, car: !!raw.car, screen: !!raw.screen,
     };
   }
 
@@ -128,6 +129,10 @@
   function blocked(idea, ctx) {
     const { answers, age, season, place, filters } = ctx;
     if (age != null && idea.age > age) return "age";
+    // Under 18: nothing that only happens late at night away from home.
+    if (age != null && age < 18 && idea.w === "n" && idea.tr >= 1) return "curfew";
+    // Nobody can drive: no road trips.
+    if (ctx.noCar && idea.tr >= 3) return "car";
     if (idea.s && !idea.s.includes(season)) return "season";
     const dislikes = ctx.dislikes || answers.dislikes || [];
     if (idea.fd.some((f) => dislikes.includes(f))) return "food";
@@ -252,6 +257,23 @@
       else if (wx.nice && idea.io === "out") { s += 0.4; reasons.push([0.6, "great weather for it"]); }
     }
 
+    // Younger users: lean into cheap, close, made-for-them ideas, away from grown-up dates and couch screens.
+    const age = ctx.age;
+    if (age != null && age <= 25) {
+      if (idea.y) s += age <= 20 ? 1.0 : 0.6;
+      if (idea.grown) s -= age <= 20 ? 2.2 : 0.9;
+      if (idea.c <= 1 && idea.tr <= 1) s += 0.3;
+      if (age <= 19 && idea.screen) s -= 1.0;
+      if (age <= 19 && idea.tr >= 1 && idea.c <= 1 && (idea.act >= 4 || idea.adv >= 5) && (a.outAbout || 5) <= 6) {
+        reasons.push([1.05, "beats another movie night 🍿"]);
+      }
+    }
+    // No car between you: rides and drives step aside.
+    if (ctx.noCar) {
+      if (idea.car) s -= 2.5;
+      else if (idea.tr === 2) s -= 1.0;
+    }
+
     // AI picks were written for this person; trust them a little extra and lead with their reason.
     if (idea.aiWhy) { s += 1.5; reasons.push([3, idea.aiWhy]); }
 
@@ -273,10 +295,23 @@
 
   function rank(ideas, ctx) {
     const exclude = ctx.exclude || new Set();
-    return ideas
+    const ranked = ideas
       .filter((i) => !exclude.has(i.id) && !blocked(i, ctx))
       .map((i) => score(i, ctx))
       .sort((x, y) => y.score - x.score);
+    return ctx.age != null && ctx.age <= 19 ? spreadHome(ranked) : ranked;
+  }
+
+  // Keep at-home ideas to at most one in every three cards near the top of the deck.
+  function spreadHome(ranked) {
+    const out = [], home = [], away = ranked.filter((e) => e.idea.tr !== 0);
+    ranked.forEach((e) => { if (e.idea.tr === 0) home.push(e); });
+    let sinceHome = 2;
+    while (away.length || home.length) {
+      if (home.length && (sinceHome >= 2 || !away.length)) { out.push(home.shift()); sinceHome = 0; }
+      else { out.push(away.shift()); sinceHome++; }
+    }
+    return out;
   }
 
   // Both people's answers feed the deck. If we're still waiting on theirs, we go on yours alone.
@@ -290,6 +325,11 @@
       answers: a,
       me,
       dislikes: [...new Set([...(a.dislikes || []), ...((me && me.dislikes) || [])])],
+      // Only "no car" if someone told us and neither of you drives.
+      noCar: (() => {
+        const known = [profile.answers, me].filter((x) => x && x.getAround);
+        return known.length > 0 && !known.some((x) => x.getAround === "drive");
+      })(),
       age: ages.length ? Math.min(...ages) : null,
       season: seasonFor(now, place ? place.lat : 40),
       place,

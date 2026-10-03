@@ -43,6 +43,14 @@
     { key: "birthdate", type: "date", emoji: "🎂",
       q: { you: "When's your birthday?", them: "When's {name}'s birthday?" },
       sub: { me: "We keep ideas right for both your ages.", them: "We use their age to keep ideas age-appropriate.", self: "Only your age gets shared, never your birthday." } },
+    { key: "getAround", type: "choice", emoji: "🛵",
+      q: { you: "How do you get around?", them: "How does {name} get around?" },
+      sub: { all: "So we don't suggest trips you can't get to." },
+      options: [
+        { v: "drive", e: "🚗", label: "I drive", sub: "Have a car (or can borrow one)" },
+        { v: "transit", e: "🚌", label: "Bus, bike or walk", sub: "No car, but I get places" },
+        { v: "ride", e: "🙋", label: "I get dropped off", sub: "Parents, friends, rideshare" },
+      ] },
     { key: "outdoorsy", type: "slider", q: { you: "How outdoorsy are you?", them: "How outdoorsy is {name}?" }, left: "Indoor kid", right: "Lives outside" },
     { key: "outAbout", type: "slider", q: { you: "Are you a homebody or out-and-about?", them: "Is {name} a homebody or out-and-about?" }, left: "Homebody", right: "Out & about" },
     { key: "adventure", type: "slider", q: { you: "Are you chill or adventurous?", them: "Is {name} chill or adventurous?" }, left: "Chill", right: "Adventurous" },
@@ -96,7 +104,7 @@
   }
 
   function freshAnswers(name = "") {
-    return { name, birthdate: "", outdoorsy: 5, outAbout: 5, adventure: 5, active: 5, crowds: 5,
+    return { name, birthdate: "", getAround: null, outdoorsy: 5, outAbout: 5, adventure: 5, active: 5, crowds: 5,
       budget: null, foodie: null, dislikes: [], interests: [], love: null };
   }
 
@@ -109,6 +117,7 @@
     else answers = freshAnswers(opts.to || (opts.pendingId && Store.get(opts.pendingId) ? Store.get(opts.pendingId).name : ""));
     if (mode === "me" && answers.budget == null && Store.active() && Store.active().answers) answers.budget = Store.active().answers.budget ?? null;
     const steps = QUIZ.filter((s) => !s.only || s.only.includes(mode));
+    if (answers.getAround === undefined) answers.getAround = null; // older answers didn't have it
     S.quiz = { ...opts, mode, steps, i: 0, answers, dir: 1 };
     show("quiz");
     renderQuiz();
@@ -220,6 +229,7 @@
     } else if (step.type === "choice") {
       $$(".tile", $("#quiz-body")).forEach((b) => b.addEventListener("click", () => {
         const v = step.key === "budget" ? +b.dataset.v : b.dataset.v;
+        if (step.key === "getAround") a.getAround = v;
         a[step.key] = v;
         $$(".tile", $("#quiz-body")).forEach((x) => x.classList.toggle("on", x === b));
         refreshNext();
@@ -307,7 +317,7 @@
     const tok = (p && p.inviteToken) || Invite.newToken(); // resending reuses the code, so older links still work
     const url = Invite.inviteUrl(pid, me ? me.name : "", toName, tok);
     const from = me && me.name ? `${me.name} here! ` : "";
-    await shareText(`Hey ${toName}! ${from}💘 I want to plan dates you'll actually love. Can you answer 9 quick questions about yourself? Takes a minute:\n${url}`);
+    await shareText(`Hey ${toName}! ${from}💘 I want to plan dates you'll actually love. Can you answer 10 quick questions about yourself? Takes a minute:\n${url}`);
     Store.markInvited(pid, tok);
   }
 
@@ -328,7 +338,7 @@
   function showInvite(inv) {
     S.invite = inv;
     $("#invite-title").textContent = `${inv.from} wants to plan dates you'll love`;
-    $("#invite-sub").textContent = `Answer 9 quick questions about yourself. It takes about a minute, and your answers only go to ${inv.from}.`;
+    $("#invite-sub").textContent = `Answer 10 quick questions about yourself. It takes about a minute, and your answers only go to ${inv.from}.`;
     show("invite");
   }
 
@@ -1002,6 +1012,7 @@
   // ======================================================================
   //  AI PLANNER
   // ======================================================================
+  const QUIZ_COUNT_NOTE = null; // (quiz length is computed per voice)
   const AI_MSGS = [
     (p) => `Reading ${p.name}'s answers…`,
     (p) => p.place ? `Checking what's near ${p.place.label.split(",")[0]}…` : "Thinking about what works anywhere…",

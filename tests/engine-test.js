@@ -72,6 +72,17 @@ const bday = (age) => { const d = new Date(); d.setFullYear(d.getFullYear() - ag
   const ageCtx = Engine.buildContext({ id: "x", answers: { ...base, birthdate: bday(22) }, place: null, saved: [], skipped: [] }, { me: { ...base, birthdate: bday(19) } });
   ok(ageCtx.age === 19, "age rules use the younger of the two");
 
+  // 16-25 tuning
+  const teenHome = Engine.rank(all, Engine.buildContext({ id: "t", answers: { ...base, outAbout: 1, active: 1, adventure: 2, birthdate: bday(16) }, place: null, saved: [], skipped: [], filters: { budget: 1, io: "any", time: "any", dist: 3 } }, { me: { ...base, outAbout: 2, birthdate: bday(17), getAround: "ride" } }));
+  const top12 = teenHome.slice(0, 12).map((r) => r.idea);
+  ok(top12.filter((i) => i.tr === 0).length <= 4, `teen homebodies still get mostly outings up top (${top12.filter((i) => i.tr === 0).length}/12 at home)`);
+  ok(!teenHome.slice(0, 30).some((r) => r.idea.grown), "no grown-up dates in a teen's top 30");
+  ok(!teenHome.some((r) => r.idea.w === "n" && r.idea.tr >= 1), "under 18: no late-night outings");
+  ok(!teenHome.some((r) => r.idea.tr >= 3), "nobody drives: no road trips");
+  ok(teenHome.slice(0, 20).filter((r) => r.idea.car).length === 0, "nobody drives: no drive-only ideas in the top 20");
+  ok(teenHome.slice(0, 15).filter((r) => r.idea.y).length >= 6, `made-for-them ideas lead the deck (${teenHome.slice(0, 15).filter((r) => r.idea.y).length}/15)`);
+  console.log("  Teen homebody top 8: " + teenHome.slice(0, 8).map((r) => r.idea.e + " " + r.idea.t).join(", "));
+
   const rank = (p, extra) => Engine.rank(all, Engine.buildContext(p, extra));
   const teen = rank(prof({ birthdate: bday(17) }));
   ok(!teen.some((r) => r.idea.age > 17), "17-year-old sees nothing 18+ or 21+");
