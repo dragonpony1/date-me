@@ -13,6 +13,8 @@
       budget: 2, foodie: 9, dislikes: ["seafood"], interests: ["artsy", "outdoorsy"], love: "time" },
     place: { label: "Salt Lake City, UT", lat: 40.76, lon: -111.89, cc: "US", isCity: true, scanned: true,
       features: { lake: true, coast: false, beach: false, mountains: true, trails: true, river: true, hotspring: true, ski: true, city: true, snow: false },
+      spots: { bowling: [{ n: "Megaplex Lanes", lat: 40.70, lon: -111.95, d: 8200 }, { n: "All Star Bowling", lat: 40.72, lon: -111.86, d: 5100 }, { n: "Pins & Ales", lat: 40.76, lon: -111.88, d: 1300 }].sort((a, b) => a.d - b.d) },
+      spotsAt: { bowling: Date.now() },
       weather: { temp: 58, unit: "°F", emoji: "☀️", text: "Clear", tmaxC: 16, rainy: false, snowing: false, hot: false, cold: false, nice: true, elevation: 1300, at: Date.now() } },
     saved: [
       snap("glow-bowling", "Glow bowling", "🎳", "active", "Blacklights, loud music, and a bet riding on the last frame.", 1, 90, "in"),
@@ -36,6 +38,6 @@
     if (view === "idea") { click('.tabbar [data-tab="saved"]'); setTimeout(() => click(".s-item"), 100); }
     if (view === "interests") { click('[data-act="tab"][data-tab="people"]'); click('[data-act="edit"]'); for (let k = 0; k < 8; k++) click("#quiz-next"); }
     if (view === "spin") { click('[data-act="open-spin"]'); setTimeout(() => click("#spin-btn"), 100); }
-  }, 600);
+  }, 1500);
 </script>
 </body></html>

@@ -77,8 +77,56 @@
     });
   }
 
+  // ---------- OpenStreetMap queries ----------
+  // The free servers are often busy. Ask the main one; if it's slow or says
+  // "busy", quietly ask the next. First good answer wins, the rest are cancelled.
+  const OVERPASS = [
+    "https://overpass-api.de/api/interpreter",
+    "https://lz4.overpass-api.de/api/interpreter",
+    "https://z.overpass-api.de/api/interpreter",
+    "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+  ];
+  const HEDGE_MS = 6000;
+
+  function overpass(query, ms = 40000) {
+    return new Promise((resolve, reject) => {
+      const ctls = [];
+      let started = 0, failed = 0, done = false, lastErr;
+      const finish = (fn, v) => {
+        if (done) return;
+        done = true;
+        clearTimeout(overall);
+        clearInterval(hedge);
+        ctls.forEach((c) => c.abort());
+        fn(v);
+      };
+      const next = () => {
+        if (done || started >= OVERPASS.length) return;
+        const url = OVERPASS[started++];
+        const ctl = new AbortController();
+        ctls.push(ctl);
+        fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: "data=" + encodeURIComponent(query),
+          signal: ctl.signal,
+        })
+          .then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+          .then((j) => finish(resolve, j))
+          .catch((e) => {
+            lastErr = e;
+            failed++;
+            if (failed >= OVERPASS.length) finish(reject, lastErr);
+            else if (failed >= started) next(); // everyone asked so far has failed: ask the next now
+          });
+      };
+      const hedge = setInterval(next, HEDGE_MS);
+      const overall = setTimeout(() => finish(reject, lastErr || new Error("timeout")), ms);
+      next();
+    });
+  }
+
   // ---------- what's nearby ----------
-  const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
 
   // Order matters: answers come back in the same order.
   const PROBES = [
@@ -94,24 +142,20 @@
     ["venues", 'nwr["amenity"~"^(theatre|cinema|arts_centre)$"](around:20000,LAT,LON)'],
   ];
 
+  // A map rectangle is far cheaper for the server than "within X metres".
+  function box(lat, lon, radius) {
+    const dLat = radius / 111320, dLon = radius / (111320 * Math.cos((lat * Math.PI) / 180));
+    return [lat - dLat, lon - dLon, lat + dLat, lon + dLon].map((v) => v.toFixed(4)).join(",");
+  }
+
   async function scan(lat, lon) {
-    const body = "[out:json][timeout:25];\n" +
-      PROBES.map(([, q]) => q.replace(/LAT/g, lat.toFixed(4)).replace(/LON/g, lon.toFixed(4)) + ";out count;").join("\n");
-    let lastErr;
-    for (const url of OVERPASS) {
-      try {
-        const data = await getJSON(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: "data=" + encodeURIComponent(body),
-        }, 30000);
-        const counts = {};
-        (data.elements || []).forEach((el, i) => { if (PROBES[i]) counts[PROBES[i][0]] = +(el.tags && el.tags.total) || 0; });
-        if (Object.keys(counts).length === PROBES.length) return counts;
-        lastErr = new Error("short answer");
-      } catch (e) { lastErr = e; }
-    }
-    throw lastErr;
+    const body = "[out:json][timeout:30];\n" +
+      PROBES.map(([, q]) => q.replace(/\(around:(\d+),LAT,LON\)/, (_, r) => `(${box(lat, lon, +r)})`) + ";out count;").join("\n");
+    const data = await overpass(body, 45000);
+    const counts = {};
+    (data.elements || []).forEach((el, i) => { if (PROBES[i]) counts[PROBES[i][0]] = +(el.tags && el.tags.total) || 0; });
+    if (Object.keys(counts).length !== PROBES.length) throw new Error("short answer");
+    return counts;
   }
 
   // Turn raw counts (or nothing) into yes/no features.
@@ -177,5 +221,5 @@
     };
   }
 
-  DM.Location = { geocode, reverse, getPosition, scan, weather, deriveFeatures };
+  DM.Location = { geocode, reverse, getPosition, scan, weather, deriveFeatures, overpass };
 })();

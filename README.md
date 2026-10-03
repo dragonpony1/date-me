@@ -8,9 +8,10 @@ Swipe right on date ideas, not people. A phone-first web app with no server and 
 |---|---|
 | `index.html` | The page and every screen |
 | `css/style.css` | Look and feel (light and dark) |
-| `js/ideas.js` | The built-in library of 195 tagged date ideas (key guide at the top) |
+| `js/ideas.js` | The built-in library of 252 tagged date ideas across 12 interests (key guide at the top) |
 | `js/engine.js` | Idea sources, filtering, scoring, "why it fits" reasons |
-| `js/location.js` | City/zip lookup, nearby features scan, weather |
+| `js/location.js` | City/zip lookup, nearby features scan, weather, busy-server fallback |
+| `js/spots.js` | Real named places near you (nearest bowling alley, trailhead, sushi...) per idea |
 | `js/store.js` | Profiles and saved ideas in localStorage |
 | `js/app.js` | Quiz, swipe deck, saved list, spin, filters, people |
 | `tests/engine-test.js` | `node tests/engine-test.js`: headless checks of the engine |
@@ -19,7 +20,7 @@ Swipe right on date ideas, not people. A phone-first web app with no server and 
 ## Free services it calls (no keys)
 
 - **OpenStreetMap Nominatim**: turns a city or zip into a map point
-- **Overpass**: counts lakes, peaks, trails, beaches, rivers, hot springs and ski areas nearby
+- **Overpass**: counts lakes, peaks, trails, beaches, rivers, hot springs and ski areas nearby, and finds the nearest real spot for each card. The public servers are often busy, so the app tries backups and caches answers for a week.
 - **Open-Meteo**: today's weather and elevation
 
 ## Adding real places or AI ideas later

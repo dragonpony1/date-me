@@ -2,7 +2,7 @@
 const fs = require("fs"), vm = require("vm"), path = require("path");
 const ctx = { window: {}, console, setTimeout, Promise };
 ctx.window = ctx; vm.createContext(ctx);
-for (const f of ["engine.js", "ideas.js"]) vm.runInContext(fs.readFileSync(path.join(__dirname, "../js", f), "utf8"), ctx);
+for (const f of ["engine.js", "spots.js", "ideas.js"]) vm.runInContext(fs.readFileSync(path.join(__dirname, "../js", f), "utf8"), ctx);
 const { Engine, IDEAS } = ctx.DateMe;
 let fails = 0;
 const ok = (cond, msg) => { console.log((cond ? "  ok  " : "  FAIL") + "  " + msg); if (!cond) fails++; };
@@ -22,6 +22,17 @@ const bday = (age) => { const d = new Date(); d.setFullYear(d.getFullYear() - ag
   ok(all.every((i) => i.int.every((t) => knownInt.has(t))), "every interest tag is one the quiz offers");
   const knownNeeds = new Set(["lake", "coast", "beach", "mountains", "trails", "river", "hotspring", "ski", "snow", "city"]);
   ok(all.every((i) => i.need.every((n) => knownNeeds.has(n))), "every 'need' is a known place feature");
+
+  const { Spots } = ctx.DateMe;
+  const ids = new Set(all.map((i) => i.id));
+  const badLinks = Object.keys(Spots.IDEA_KIND).filter((id) => !ids.has(id));
+  ok(badLinks.length === 0, "every real-place link points at a real idea" + (badLinks.length ? ": " + badLinks.join(", ") : ""));
+  ok(Object.values(Spots.IDEA_KIND).every((k) => Spots.KINDS[k]), "every real-place link uses a known kind of place");
+  console.log(`  (${Object.keys(Spots.IDEA_KIND).length} ideas can show a real nearby spot)`);
+  const fakePlace = { lat: 40.76, lon: -111.89, cc: "US", spots: { bowling: [{ n: "Fat Cats", lat: 40.75, lon: -111.9, d: 3400 }], escape: [] }, spotsAt: { bowling: Date.now(), escape: Date.now() } };
+  const fs1 = Spots.forIdea({ id: "glow-bowling" }, fakePlace);
+  ok(fs1 && fs1[0].name === "Fat Cats" && fs1[0].dist === "2.1 mi", "bowling card shows 'Fat Cats · 2.1 mi'");
+  ok(Spots.noneNearby({ id: "escape-room" }, fakePlace), "an empty lookup counts as 'none nearby'");
 
   const rank = (p, extra) => Engine.rank(all, Engine.buildContext(p, extra));
   const teen = rank(prof({ birthdate: bday(17) }));

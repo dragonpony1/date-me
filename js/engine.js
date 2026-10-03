@@ -34,7 +34,7 @@
     if (i >= 0) sources[i] = src; else sources.push(src);
   }
 
-  const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  const slug = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
   const SOC_BY_TRAVEL = [1, 6, 7, 8];
   const OD_BY_IO = { out: 9, mix: 5, in: 1 };
 
@@ -213,6 +213,9 @@
     const feats = (ctx.place && ctx.place.features) || {};
     const nearHit = idea.need.find((n) => feats[n] === true && n !== "city");
     if (nearHit) { s += 1.0; reasons.push([1.4, FEATURE_WHY[nearHit]]); }
+
+    // We looked it up and there's no bowling alley (or whatever) anywhere near.
+    if (DM.Spots && ctx.place && DM.Spots.noneNearby(idea, ctx.place)) s -= 0.8;
 
     // Weather.
     const wx = ctx.place && ctx.place.weather;

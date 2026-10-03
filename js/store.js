@@ -104,8 +104,8 @@
 
     // Only what the saved list needs to draw a card.
     snapshot(idea) {
-      const { id, t, e, cat, d, c, m, io, place } = idea;
-      return { id, t, e, cat, d, c, m, io, place: place || null };
+      const { id, t, e, cat, d, c, m, io, place, spot } = idea;
+      return { id, t, e, cat, d, c, m, io, place: place || null, spot: spot || null };
     },
   };
 

@@ -1,6 +1,6 @@
 /* Date Me — screens, quiz, swiping, spin. */
 (function () {
-  const { Store, Engine, Location } = window.DateMe;
+  const { Store, Engine, Location, Spots } = window.DateMe;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -14,6 +14,7 @@
     tab: "discover",
     pending: null,     // filters being edited in the sheet
     spin: null,        // { n, pos, winner }
+    spotTried: new Set(), // place kinds we've already asked about this session
   };
 
   // ======================================================================
@@ -315,6 +316,8 @@
       if (S.loc && S.loc.place === place) renderLocResult();
       const p = Store.get(profileId);
       if (p && p.place && p.place.lat === place.lat && p.place.lon === place.lon) {
+        place.spots = { ...(p.place.spots || {}), ...(place.spots || {}) };
+        place.spotsAt = { ...(p.place.spotsAt || {}), ...(place.spotsAt || {}) };
         Store.setPlace(profileId, strip(place));
         if (Store.active() && Store.active().id === profileId && !$("#screen-main").hidden) { renderStatus(); rebuildDeck(true); }
       }
@@ -352,7 +355,7 @@
   // ======================================================================
   //  MAIN: DECK
   // ======================================================================
-  function resetDeck() { S.candidates = null; S.deck = []; S.history = []; }
+  function resetDeck() { S.candidates = null; S.deck = []; S.history = []; S.spotTried = new Set(); }
 
   async function ensureCandidates(profile) {
     if (S.candidates) return;
@@ -381,7 +384,7 @@
     const i = entry.idea;
     const badges = entry.badges.map((b) => `<span>${esc(b)}</span>`).join("");
     const why = entry.why.length ? `<div class="why">💡 ${esc(cap(entry.why.join(" · ")))}</div>` : "";
-    const place = i.place ? `<div class="place-line">📍 ${i.place.url ? `<a href="${esc(i.place.url)}" target="_blank" rel="noopener">${esc(i.place.name)}</a>` : esc(i.place.name)}</div>` : "";
+    const place = `<div class="spot-slot" data-kind="${esc(Spots.kindFor(i) || "")}">${spotLine(i)}</div>`;
     return `
       <div class="art cat-${esc(i.cat)}">
         <div class="match">🔥 ${entry.pct}% match</div>
@@ -398,6 +401,49 @@
       </div>`;
   }
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+  // ---------- real spots near you ----------
+  const spotLink = (sp) => `<a href="${esc(sp.url)}" target="_blank" rel="noopener">${esc(sp.name)}</a> · ${esc(sp.dist)}`;
+
+  function spotLine(idea) {
+    if (idea.place) return `<div class="place-line">📍 ${idea.place.url ? `<a href="${esc(idea.place.url)}" target="_blank" rel="noopener">${esc(idea.place.name)}</a>` : esc(idea.place.name)}</div>`;
+    const p = Store.active();
+    const kind = Spots.kindFor(idea);
+    if (!kind || !p || !p.place) return "";
+    const list = Spots.forIdea(idea, p.place);
+    if (list && list.length) return `<div class="place-line">📍 ${spotLink(list[0])}${list.length > 1 ? ` <small>+${list.length - 1} more</small>` : ""}</div>`;
+    if (list || S.spotTried.has(kind)) return "";
+    return `<div class="place-line wait">📍 Finding the nearest one…</div>`;
+  }
+
+  function refreshSpotSlots(kind) {
+    $$(`.spot-slot[data-kind="${kind}"]`).forEach((slot) => {
+      const card = slot.closest(".card");
+      const entry = card && S.deck.find((e) => e.idea.id === card.dataset.id);
+      if (entry) slot.innerHTML = spotLine(entry.idea);
+    });
+    const box = $("#idea-box");
+    if (!$("#modal-idea").hidden && box.dataset.kind === kind) openIdea(box.dataset.id);
+  }
+
+  // Look up real places for the next few cards (one kind at a time, cached for a week).
+  function prefetchSpots() {
+    const p = Store.active();
+    if (!p || !p.place) return;
+    const kinds = [...new Set(S.deck.slice(0, 4).map((e) => Spots.kindFor(e.idea)).filter(Boolean))];
+    kinds.forEach((kind) => requestSpot(kind));
+  }
+
+  function requestSpot(kind) {
+    const p = Store.active();
+    if (!p || !p.place) return;
+    const place = p.place;
+    Spots.request(kind, place).then((list) => {
+      S.spotTried.add(kind);
+      if (list) Store.save();
+      if (Store.active() && Store.active().place === place) refreshSpotSlots(kind);
+    });
+  }
 
   function renderDeck(enterId) {
     const deckEl = $("#deck");
@@ -423,6 +469,7 @@
       if (idx === 0) bindDrag(el);
     });
     if (!show3.length) deckEl.insertAdjacentHTML("beforeend", emptyHTML());
+    prefetchSpots();
     $("[data-act=undo]").disabled = !S.history.length;
     $("[data-act=nope]").disabled = !show3.length;
     $("[data-act=like]").disabled = !show3.length;
@@ -445,7 +492,7 @@
     let sx = 0, sy = 0, dx = 0, dy = 0, t0 = 0, active = false;
     const yes = $(".stamp.yes", el), no = $(".stamp.no", el);
     el.addEventListener("pointerdown", (e) => {
-      if (el !== topCard() || e.button > 0) return;
+      if (el !== topCard() || e.button > 0 || e.target.closest("a")) return;
       active = true; sx = e.clientX; sy = e.clientY; dx = dy = 0; t0 = performance.now();
       el.setPointerCapture(e.pointerId);
       el.classList.add("dragging");
@@ -489,7 +536,7 @@
     S.history.push({ entry, dir });
     if (S.history.length > 30) S.history.shift();
     if (dir > 0) {
-      Store.saveIdea(p.id, entry.idea);
+      Store.saveIdea(p.id, { ...entry.idea, spot: Spots.kindFor(entry.idea) });
       updateSavedCount();
       if (p.saved.length === 1) toast("Saved! Find it in the ♥ tab");
     } else {
@@ -630,11 +677,19 @@
     const s = p.saved.find((x) => x.id === id);
     if (!s) return;
     const i = s.idea;
+    const kind = i.spot || Spots.kindFor(i);
+    const list = kind && p.place ? Spots.forIdea({ ...i, spot: kind }, p.place) : null;
+    let spotsHTML = "";
+    if (i.place) spotsHTML = spotLine(i);
+    else if (list && list.length) spotsHTML = `<div class="spot-list"><b>Near you</b>${list.map((sp) => `<div>📍 ${spotLink(sp)}</div>`).join("")}</div>`;
+    else if (kind && p.place && !list && !S.spotTried.has(kind)) { spotsHTML = `<div class="place-line wait">📍 Finding the nearest one…</div>`; requestSpot(kind); }
+    $("#idea-box").dataset.id = i.id;
+    $("#idea-box").dataset.kind = kind || "";
     $("#idea-box").innerHTML = `
       <button class="icon-btn close" data-act="close-idea" aria-label="Close">✕</button>
       <div class="art cat-${esc(i.cat)}"><div class="em">${esc(i.e)}</div></div>
       <div class="body"><h3>${esc(i.t)}</h3><p>${esc(i.d)}</p>
-        <div class="meta"><span>💲 ${Engine.fmtCost(i.c)}</span><span>⏱ ${Engine.fmtTime(i.m)}</span><span>${Engine.ioLabel(i.io)}</span></div></div>
+        <div class="meta"><span>💲 ${Engine.fmtCost(i.c)}</span><span>⏱ ${Engine.fmtTime(i.m)}</span><span>${Engine.ioLabel(i.io)}</span></div>${spotsHTML}</div>
       <div class="idea-btns">
         <button class="btn-outline" data-act="unsave" data-id="${esc(i.id)}" data-close="1">Remove</button>
         <button class="btn-grad" data-act="share-idea" data-id="${esc(i.id)}">💌 Send to ${esc(p.name)}</button>
@@ -778,7 +833,10 @@
     const s = p.saved.find((x) => x.id === id);
     if (!s) return;
     const i = s.idea;
-    shareText(`${i.e} Date idea: ${i.t}\n${i.d}\n${Engine.fmtCost(i.c)} · ${Engine.fmtTime(i.m)}\n\nWant to? 💘\n\n(found on Date Me: ${appUrl()})`);
+    const kind = i.spot || Spots.kindFor(i);
+    const list = kind && p.place ? Spots.forIdea({ ...i, spot: kind }, p.place) : null;
+    const where = list && list.length ? `\n📍 ${list[0].name} (${list[0].dist})\n${list[0].url}` : "";
+    shareText(`${i.e} Date idea: ${i.t}\n${i.d}\n${Engine.fmtCost(i.c)} · ${Engine.fmtTime(i.m)}${where}\n\nWant to? 💘\n\n(found on Date Me: ${appUrl()})`);
   }
 
   function shareApp() {
