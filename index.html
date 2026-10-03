@@ -256,7 +256,8 @@
     <!-- Filters sheet -->
     <div id="sheet-filters" class="overlay" hidden>
       <div class="sheet" role="dialog" aria-label="Filters">
-        <div class="grabber"></div>
+        <button class="grabber" data-act="close-sheet" aria-label="Close"></button>
+        <button class="icon-btn close" data-act="close-sheet" aria-label="Close">✕</button>
         <h3>Filters</h3>
         <div class="f-group"><label>Budget (up to)</label><div class="chips" data-filter="budget"></div></div>
         <div class="f-group"><label>Indoor or outdoor</label><div class="chips" data-filter="io"></div></div>
@@ -272,7 +273,8 @@
     <!-- AI planner -->
     <div id="sheet-ai" class="overlay" hidden>
       <div class="sheet" role="dialog" aria-label="AI planner">
-        <div class="grabber"></div>
+        <button class="grabber" data-act="close-sheet" aria-label="Close"></button>
+        <button class="icon-btn close" data-act="close-sheet" aria-label="Close">✕</button>
         <div id="ai-form">
           <h3 id="ai-title">✨ Plan something</h3>
           <p class="ai-sub" id="ai-sub"></p>

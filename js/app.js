@@ -1524,6 +1524,7 @@
       case "delete": armDelete(el, id); break;
       case "open-ai": if (coachId === "ai") endCoach(); openAI(); break;
       case "close-ai": $("#sheet-ai").hidden = true; break;
+      case "close-sheet": { const ov = el.closest(".overlay"); if (ov && !(ov.id === "sheet-ai" && S.ai)) ov.hidden = true; break; }
       case "run-ai": runAI(); break;
       case "cancel-ai": stopAI(); $("#ai-loading").hidden = true; $("#ai-form").hidden = false; break;
     }
@@ -1542,6 +1543,10 @@
   $("#loc-form").addEventListener("submit", (e) => { e.preventDefault(); $("#loc-input").blur(); locSearch($("#loc-input").value); });
 
   document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      const open = $$(".overlay").find((o) => !o.hidden && !(o.id === "sheet-ai" && S.ai) && !(o.id === "modal-spin" && S.spin && S.spin.spinning));
+      if (open) { open.hidden = true; return; }
+    }
     if ($("#screen-main").hidden || S.tab !== "discover" || !$$(".overlay").every((o) => o.hidden)) return;
     if (e.key === "ArrowRight") swipe(1);
     else if (e.key === "ArrowLeft") swipe(-1);

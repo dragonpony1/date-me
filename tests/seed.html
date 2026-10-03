@@ -2,7 +2,7 @@
 <!-- Test fixture: loads a sample profile, then shows the app at phone size.
      ?view=deck | saved | spin | filters | people | idea | interests | ai | aicard | who | invite | share | ribbon | age | slide1..slide4 | hint | coach | welcome
      Overwrites this browser's Date Me data, so only use it on a test browser. -->
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>html,body{margin:0}iframe{border:0;position:fixed;left:0;top:0;width:375px;height:812px}</style></head>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>html,body{margin:0}iframe{border:0;position:fixed;left:0;top:0;width:375px;height:100%}</style></head>
 <body>
 <script>
   const view = new URLSearchParams(location.search).get("view") || "deck";
@@ -28,7 +28,7 @@
   const me = { name: "Matt", birthdate: "2005-02-10", outdoorsy: 9, outAbout: 5, adventure: 8, active: 5, crowds: 5, budget: 1, foodie: 5, dislikes: ["sushi"], interests: ["outdoorsy", "animals"], love: "time" };
   // Views screenshotted with --virtual-time-budget must not wait on map servers: pretend every lookup is done.
   Object.keys(localStorage).filter((k) => k.startsWith("dateme:hint")).forEach((k) => localStorage.removeItem(k));
-  if (view === "share" || view === "ribbon" || view === "age" || view === "hint" || view === "coach") {
+  if (view === "share" || view === "ribbon" || view === "age" || view === "hint" || view === "coach" || view === "filters") {
     profile.place.spots = {}; profile.place.spotsAt = {};
     ["bowling","trailhead","lake","park","viewpoint","waterfall","hotspring","reserve","cafe","farm","shelter","icerink","musicvenue","theatre","museum","zoo","aquarium","mexican","sushi","ramen","market","peak","river","beach","ski"].forEach((k) => { profile.place.spots[k] = []; profile.place.spotsAt[k] = Date.now(); });
   }
