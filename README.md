@@ -13,6 +13,7 @@ Swipe right on date ideas, not people. A phone-first web app with no server and 
 | `js/location.js` | City/zip lookup, nearby features scan, weather, busy-server fallback |
 | `js/spots.js` | Real named places near you (nearest bowling alley, trailhead, sushi...) per idea |
 | `js/ai.js` | ✨ AI planner: sends quiz answers (never the name) + area to the date-me-ai worker, gets 5 custom ideas back |
+| `js/shop.js` | "Get the kit" (Amazon), "Book it" (GetYourGuide), "Find tickets" (Ticketmaster) buttons; affiliate IDs go in `AFFILIATE` at the top |
 | `js/store.js` | Profiles, saved ideas and AI ideas in localStorage |
 | `js/app.js` | Quiz, swipe deck, saved list, spin, filters, people |
 | `tests/engine-test.js` | `node tests/engine-test.js`: headless checks of the engine |

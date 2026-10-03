@@ -241,6 +241,10 @@ input[type="range"].slider::-moz-range-thumb { width: 40px; height: 40px; border
 .place-line a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--pink); text-decoration-thickness: 2px; text-underline-offset: 3px; }
 .place-line small { color: var(--ink-2); font-weight: 600; }
 .place-line.wait { color: var(--ink-2); font-weight: 600; animation: pulse 1.2s ease-in-out infinite; }
+.shop { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.spin-result .shop { justify-content: center; }
+.shop-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border-radius: 99px; background: var(--surface-2); border: 1.5px solid var(--line); color: var(--ink); font-weight: 700; font-size: 14px; text-decoration: none; }
+.shop-btn:active { transform: scale(.97); }
 .spot-list { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; font-weight: 600; }
 .spot-list b { font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: var(--ink-2); }
 .spot-list a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--pink); text-decoration-thickness: 2px; text-underline-offset: 3px; }

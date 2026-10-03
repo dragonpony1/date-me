@@ -1,6 +1,6 @@
 /* Date Me — screens, quiz, swiping, spin. */
 (function () {
-  const { Store, Engine, Location, Spots, AI } = window.DateMe;
+  const { Store, Engine, Location, Spots, AI, Shop } = window.DateMe;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -403,6 +403,14 @@
   }
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
+  // "Get the kit" / "Book it" / "Find tickets" buttons (see shop.js).
+  function shopHTML(idea) {
+    const p = Store.active();
+    const links = Shop.linksFor(idea, p && p.place);
+    if (!links.length) return "";
+    return `<div class="shop">${links.map((l) => `<a class="shop-btn" href="${esc(l.url)}" target="_blank" rel="noopener sponsored">${l.icon} ${esc(l.label)}</a>`).join("")}</div>`;
+  }
+
   // ---------- real spots near you ----------
   const spotLink = (sp) => `<a href="${esc(sp.url)}" target="_blank" rel="noopener">${esc(sp.name)}</a> · ${esc(sp.dist)}`;
 
@@ -690,7 +698,7 @@
       <button class="icon-btn close" data-act="close-idea" aria-label="Close">✕</button>
       <div class="art cat-${esc(i.cat)}"><div class="em">${esc(i.e)}</div></div>
       <div class="body"><h3>${esc(i.t)}</h3><p>${esc(i.d)}</p>
-        <div class="meta"><span>💲 ${Engine.fmtCost(i.c)}</span><span>⏱ ${Engine.fmtTime(i.m)}</span><span>${Engine.ioLabel(i.io)}</span></div>${spotsHTML}</div>
+        <div class="meta"><span>💲 ${Engine.fmtCost(i.c)}</span><span>⏱ ${Engine.fmtTime(i.m)}</span><span>${Engine.ioLabel(i.io)}</span></div>${spotsHTML}${shopHTML(i)}</div>
       <div class="idea-btns">
         <button class="btn-outline" data-act="unsave" data-id="${esc(i.id)}" data-close="1">Remove</button>
         <button class="btn-grad" data-act="share-idea" data-id="${esc(i.id)}">💌 Send to ${esc(p.name)}</button>
@@ -753,7 +761,7 @@
     setTimeout(() => {
       sp.spinning = false;
       const w = p.saved[winner].idea;
-      $("#spin-result").innerHTML = `<h4>${esc(w.e)} ${esc(w.t)}</h4><p>${esc(w.d)}</p>`;
+      $("#spin-result").innerHTML = `<h4>${esc(w.e)} ${esc(w.t)}</h4><p>${esc(w.d)}</p>${shopHTML(w)}`;
       $("#spin-result").hidden = false;
       $("#share-winner").hidden = false;
       $("#share-winner").dataset.id = w.id;

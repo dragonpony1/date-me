@@ -1,8 +1,8 @@
 // Headless check of the idea engine: node tests/engine-test.js
 const fs = require("fs"), vm = require("vm"), path = require("path");
-const ctx = { window: {}, console, setTimeout, Promise };
+const ctx = { window: {}, console, setTimeout, Promise, URL };
 ctx.window = ctx; vm.createContext(ctx);
-for (const f of ["engine.js", "spots.js", "ideas.js"]) vm.runInContext(fs.readFileSync(path.join(__dirname, "../js", f), "utf8"), ctx);
+for (const f of ["engine.js", "spots.js", "ideas.js", "shop.js"]) vm.runInContext(fs.readFileSync(path.join(__dirname, "../js", f), "utf8"), ctx);
 const { Engine, IDEAS } = ctx.DateMe;
 let fails = 0;
 const ok = (cond, msg) => { console.log((cond ? "  ok  " : "  FAIL") + "  " + msg); if (!cond) fails++; };
@@ -33,6 +33,14 @@ const bday = (age) => { const d = new Date(); d.setFullYear(d.getFullYear() - ag
   const fs1 = Spots.forIdea({ id: "glow-bowling" }, fakePlace);
   ok(fs1 && fs1[0].name === "Fat Cats" && fs1[0].dist === "2.1 mi", "bowling card shows 'Fat Cats · 2.1 mi'");
   ok(Spots.noneNearby({ id: "escape-room" }, fakePlace), "an empty lookup counts as 'none nearby'");
+
+  const { Shop } = ctx.DateMe;
+  const shopIds = [...Object.keys(Shop.KIT), ...Object.keys(Shop.BOOK), ...Object.keys(Shop.TICKETS)];
+  const badShop = shopIds.filter((id) => !ids.has(id));
+  ok(badShop.length === 0, "every shop link points at a real idea" + (badShop.length ? ": " + badShop.join(", ") : ""));
+  console.log(`  (${new Set(shopIds).size} ideas have a kit, booking or ticket button)`);
+  const kitLink = Shop.linksFor({ id: "tie-dye-shirts" }, null)[0];
+  ok(kitLink && kitLink.url.startsWith("https://www.amazon.com/s?k=tie+dye+kit"), "tie-dye card links to an Amazon search for a tie dye kit");
 
   const rank = (p, extra) => Engine.rank(all, Engine.buildContext(p, extra));
   const teen = rank(prof({ birthdate: bday(17) }));
