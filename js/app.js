@@ -494,7 +494,7 @@
     el.addEventListener("pointerdown", (e) => {
       if (el !== topCard() || e.button > 0 || e.target.closest("a")) return;
       active = true; sx = e.clientX; sy = e.clientY; dx = dy = 0; t0 = performance.now();
-      el.setPointerCapture(e.pointerId);
+      try { el.setPointerCapture(e.pointerId); } catch (err) { /* pointer already gone */ }
       el.classList.add("dragging");
     });
     el.addEventListener("pointermove", (e) => {
